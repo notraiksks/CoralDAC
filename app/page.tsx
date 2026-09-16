@@ -1,69 +1,113 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import React, { useState } from 'react';
+import { STATIONS, INITIAL_SUBMISSIONS } from './data';
+import { NavigationRail, GlobalHeader } from './components/layout';
+import {
+  ReefHealthMapPage,
+  UploadSurveyImagePage,
+  MySubmissionsPage,
+} from './views';
+import { TriageQueueModal } from './components/modals/TriageQueueModal';
+import { StationDetailModal } from './components/modals/StationDetailModal';
+import { PastTransectsModal } from './components/modals/PastTransectsModal';
+import { SubmissionRecord } from './types';
+
+export default function HomePage() {
+  const [activeTab, setActiveTab] = useState<'map' | 'upload' | 'submissions'>('submissions');
+  const [selectedStationId, setSelectedStationId] = useState<string>(STATIONS[0].id);
+  const [submissionsList] = useState<SubmissionRecord[]>(INITIAL_SUBMISSIONS);
+  const [isTriageOpen, setIsTriageOpen] = useState(false);
+  const [isStationDetailOpen, setIsStationDetailOpen] = useState(false);
+  const [isPastTransectsOpen, setIsPastTransectsOpen] = useState(false);
+
+  const currentStation =
+    STATIONS.find((station) => station.id === selectedStationId) || STATIONS[0];
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="flex w-screen h-screen overflow-hidden bg-[#E7E2D4] text-[#1D1C13]">
+      <NavigationRail
+        activeTab={activeTab}
+        onSelectTab={(tab) => {
+          if (tab === 'map' || tab === 'upload' || tab === 'submissions') {
+            setActiveTab(tab);
+          } else if (tab === 'stations') {
+            setIsStationDetailOpen(true);
+          } else if (tab === 'transects') {
+            setIsPastTransectsOpen(true);
+          } else if (tab === 'diagnostics') {
+            setIsTriageOpen(true);
+          }
+        }}
+        onOpenTriage={() => setIsTriageOpen(true)}
+      />
+
+      <div className="flex-1 pl-16 flex flex-col h-full overflow-hidden">
+        <GlobalHeader
+          stations={STATIONS}
+          selectedStationId={selectedStationId}
+          onSelectStation={(id) => {
+            setSelectedStationId(id);
+            setActiveTab('map');
+          }}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
+
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {activeTab === 'upload' && (
+            <UploadSurveyImagePage
+              stations={STATIONS}
+              selectedStationId={selectedStationId}
+              onSelectStation={setSelectedStationId}
+              onNavigateToMap={() => setActiveTab('map')}
+              onNavigateToSubmissions={() => setActiveTab('submissions')}
+              onOpenCurationQueue={() => setIsTriageOpen(true)}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          )}
+
+          {activeTab === 'submissions' && (
+            <MySubmissionsPage
+              submissions={submissionsList}
+              onNavigateToUpload={() => setActiveTab('upload')}
+              onNavigateToMap={(stationId) => {
+                if (stationId && STATIONS.some((station) => station.id === stationId)) {
+                  setSelectedStationId(stationId);
+                }
+                setActiveTab('map');
+              }}
+              onOpenCurationQueue={() => setIsTriageOpen(true)}
+            />
+          )}
+
+          {activeTab === 'map' && (
+            <ReefHealthMapPage
+              stations={STATIONS}
+              selectedStationId={selectedStationId}
+              onSelectStation={setSelectedStationId}
+              setIsTriageOpen={setIsTriageOpen}
+              setIsStationDetailOpen={setIsStationDetailOpen}
+              setIsPastTransectsOpen={setIsPastTransectsOpen}
+            />
+          )}
         </div>
-      </main>
+      </div>
+
+      <TriageQueueModal
+        key={currentStation.id}
+        station={currentStation}
+        isOpen={isTriageOpen}
+        onClose={() => setIsTriageOpen(false)}
+      />
+      <StationDetailModal
+        station={currentStation}
+        isOpen={isStationDetailOpen}
+        onClose={() => setIsStationDetailOpen(false)}
+        onOpenTriage={() => setIsTriageOpen(true)}
+      />
+      <PastTransectsModal
+        station={currentStation}
+        isOpen={isPastTransectsOpen}
+        onClose={() => setIsPastTransectsOpen(false)}
+      />
     </div>
   );
 }
