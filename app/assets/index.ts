@@ -1,0 +1,8 @@
+/**
+ * Static asset definitions and reference URLs for the marine biology survey console.
+ */
+
+export const ASSET_REFERENCES = {
+  quadratSurveySample: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCBvtsApJwhLwCzTWul6bygNY5aWHjuwHNY041MWNE6YjTxrZsrjZjTR4L9D4Ca5t8lRh6uPZwtOE4c73Y4hUPXyg2CMLS8-v8MsvMAs_kuKcAdNHusEj8LdEdtVzt_Tdedu5prZAQgU1VzpVcmqDncFJBt62S0OUFlpGQHjnOu8mzFrEE2yglC7XukdCYZDIqSH_WRrQnTgjdc-EXA28Z8DpPS_MaEfAhy2kpWzz3BByMWBPdxdO1P',
+  stationMiniMapPreview: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA9SxFjeV90cnVjonUIBBTD_t27TIRImvirZeQ-yK4FmjPb1eINi3snxRVgh99fbnHBDyZM_UEDKPmPicnaC97Afawqtq6yb51_9_J5j0ExKLQIhPkmbESvrkipURrpNYnzHyQ_EbQPm9k72ul-2mQmE7JGrBsTTZWbCQepL_rcNpaok7_fCnI3x5bOdEkZVVg8VKWaFeQ4DiCnlq9NSc2bu02QMH4BqZ2dqe6arvr226hq05XK_AGr',
+};

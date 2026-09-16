@@ -1,26 +1,61 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@import "tailwindcss";
+
+@theme {
+  --font-serif: 'Merriweather', Georgia, serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --color-surface: #fef9eb;
+  --color-surface-dim: #dfdacc;
+  --color-surface-bright: #fef9eb;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f9f3e5;
+  --color-surface-container: #f3eedf;
+  --color-surface-container-high: #ede8da;
+  --color-surface-container-highest: #e7e2d4;
+  --color-on-surface: #1d1c13;
+  --color-on-surface-variant: #40484c;
+  --color-inverse-surface: #323127;
+  --color-inverse-on-surface: #f6f0e2;
+  --color-outline: #70787c;
+  --color-outline-variant: #c0c8cc;
+  --color-surface-tint: #27667b;
+  --color-primary: #00475a;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #1e5f74;
+  --color-on-primary-container: #9cd7ef;
+  --color-inverse-primary: #94cfe7;
+  --color-secondary: #53606d;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #d3e1f0;
+  --color-on-secondary-container: #576471;
+  --color-tertiary: #39460b;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #505e21;
+  --color-on-tertiary-container: #c6d78c;
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+  --color-surface-variant: #e7e2d4;
+  --color-background: #fef9eb;
+  --color-on-background: #1d1c13;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+@layer base {
+  * {
+    border-radius: 0px !important;
+  }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  body {
+    font-family: var(--font-sans);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+::-webkit-scrollbar {
+  display: none;
 }
