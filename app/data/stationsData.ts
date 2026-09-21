@@ -2,6 +2,53 @@ import { StationData } from '../types';
 
 export const STATIONS: StationData[] = [
   {
+    id: 'HP-S3',
+    name: 'Harka Piloto — Shallow, T3',
+    depth: 8.4,
+    transect: 'TR-03A',
+    coordinates: '13.5123°N, 120.9573°E',
+    x: 820,
+    y: 360,
+    health: {
+      lc: 67.6,
+      pb: 18.1,
+      dc: 10.0,
+      dca: 4.3,
+    },
+    quadratsCount: 24,
+    meanTemp: 29.4,
+    parLight: 420,
+    phLevel: 8.08,
+    profilePoint: { x: 100, y: 28, label: 'HP-S3 (-8.4m)' },
+    quadrats: [
+      {
+        id: 'Q-HP-01',
+        quadratNumber: 1,
+        coverLC: 68,
+        coverPB: 18,
+        coverDC: 10,
+        coverDCA: 4,
+        dominantClass: 'Living Coral (LC)',
+        confidence: 0.96,
+        status: 'VERIFIED',
+        notes: 'Vibrant branching Acropora coral with intact pigment canopy.',
+        timestamp: '2026-03-04 10:41 UTC',
+      },
+    ],
+    pastTransects: [
+      {
+        id: 'PT-HP-01',
+        code: 'TR-03A-2026Q1',
+        date: '2026-03-04',
+        waterTemp: '29.4°C',
+        visibility: '20m',
+        bleachedCover: '18.1%',
+        primaryClass: 'Living Coral (LC)',
+        quadratsCount: 24,
+      },
+    ],
+  },
+  {
     id: 'BAKER-04',
     name: 'Outer Ribbon Reef',
     depth: 8.4,
