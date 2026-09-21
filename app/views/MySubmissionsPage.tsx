@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import {
+  FolderOpen,
   AddCircle,
   Check,
   Close,
   Search,
-  Sync,
   CalendarMonth,
   Tune,
   Image as ImageIcon,
@@ -45,18 +45,7 @@ export const MySubmissionsPage: React.FC<MySubmissionsPageProps> = ({
     new Set(['SUB-2026-003'])
   );
   const [currentPage, setCurrentPage] = useState(1);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [syncNotice, setSyncNotice] = useState<string | null>(null);
   const pageSize = 5;
-
-  const handleRefreshSync = () => {
-    setIsRefreshing(true);
-    setSyncNotice(null);
-    window.setTimeout(() => {
-      setIsRefreshing(false);
-      setSyncNotice('SYNC COMPLETE');
-    }, 600);
-  };
 
   const toggleRowExpansion = (id: string) => {
     setExpandedRowIds((prev) => {
@@ -162,7 +151,7 @@ export const MySubmissionsPage: React.FC<MySubmissionsPageProps> = ({
   return (
     <div
       id="my-submissions-page"
-      className="flex-1 w-full bg-[#E7E2D4] overflow-y-auto px-6 md:px-8 pt-20 pb-8 text-[#1D1C13]"
+      className="flex-1 w-full bg-[#E7E2D4] px-6 md:px-8 pt-20 pb-8 text-[#1D1C13]"
     >
       <div className="max-w-7xl mx-auto flex flex-col w-full">
         {/* Top Header Section */}
@@ -185,20 +174,6 @@ export const MySubmissionsPage: React.FC<MySubmissionsPageProps> = ({
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-            {syncNotice && (
-              <span className="font-mono text-[11px] text-[#00475A] bg-[#FEF9EB] px-2.5 py-1 border border-[#D1CBBF] animate-fade-in">
-                {syncNotice}
-              </span>
-            )}
-            <button
-              id="refresh-sync-btn"
-              type="button"
-              onClick={handleRefreshSync}
-              className="px-3 py-1.5 bg-[#FEF9EB] border border-[#16232E]/30 hover:bg-[#EDE8DA] transition-colors font-mono text-[11px] text-[#1D1C13] flex items-center gap-1.5 shadow-sm cursor-pointer"
-            >
-              <Sync className={`text-[#53606D] ${isRefreshing ? 'animate-spin' : ''}`} size={16} />
-              <span>{isRefreshing ? 'SYNCING...' : 'REFRESH SYNC'}</span>
-            </button>
             <button
               id="upload-new-survey-btn"
               type="button"
@@ -523,10 +498,6 @@ export const MySubmissionsPage: React.FC<MySubmissionsPageProps> = ({
                               <span>{row.fileSize}</span>
                               <span className="text-[#D1CBBF]">•</span>
                               <span>{row.format}</span>
-                              <span className="text-[#D1CBBF]">•</span>
-                              <span className={isRejected ? 'text-[#BA1A1A] font-medium' : 'text-[#39460B]'}>
-                                {row.cameraSettings ?? 'CAMERA DATA N/A'}
-                              </span>
                             </div>
                           </div>
                         </td>
@@ -559,7 +530,7 @@ export const MySubmissionsPage: React.FC<MySubmissionsPageProps> = ({
                               {row.coordinates}
                             </span>
                             <span className="font-mono text-[10px] text-[#53606D]">
-                              Depth: {row.depth} · Diver: {row.diver ?? 'UNASSIGNED'}
+                              Depth: {row.depth}
                             </span>
                           </div>
                         </td>
@@ -877,11 +848,10 @@ export const MySubmissionsPage: React.FC<MySubmissionsPageProps> = ({
                 <span className="text-[10px] text-[#53606D] font-mono">[STN-STD-v4.2]</span>
               </div>
               <p className="font-sans text-xs text-[#40484C] leading-relaxed">
-                Approved transect quadrats are integrated into the GBR Long-Term Benthic Health
-                Basemap within 4 hours of senior taxonomist sign-off. Rejected captures may be
-                resubmitted with strobe calibration metadata. Provisional point-intercept counts
-                reflect automatic neural network inference (Benthic-YOLO v8.4, 95.8% F1-score on
-                Indo-Pacific scleractinian corals).
+                Approved survey captures are verified by the curation review team and archived to
+                the station monitoring database. Provisional benthic counts reflect automated object
+                detection and four-class coral health assessment (Live Coral, Pale/Bleached, Dead Coral,
+                and Dead Coral with Algae).
               </p>
             </div>
           </div>

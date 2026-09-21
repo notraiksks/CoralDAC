@@ -40,7 +40,7 @@ export const UploadSurveyImagePage: React.FC<UploadSurveyImagePageProps> = ({
   return (
     <div
       id="upload-survey-image-page"
-      className="flex-1 flex flex-col h-full overflow-y-auto bg-[#E7E2D4]"
+      className="flex-1 flex flex-col h-full bg-[#E7E2D4]"
     >
       {/* Top Ledger Subheader Bar */}
       <div className="pt-14">

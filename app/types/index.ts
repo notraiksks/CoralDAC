@@ -66,3 +66,4 @@ export interface CursorTelemetry {
 }
 
 export * from './submissions';
+export * from './curation';

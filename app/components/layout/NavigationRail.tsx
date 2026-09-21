@@ -4,6 +4,8 @@ import {
   Upload,
   FolderOpen,
   ClipboardCheck,
+  BarChart3,
+  Layers,
   Radio,
   Activity,
   SlidersHorizontal,
@@ -84,9 +86,13 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
 
           <button
             id="nav-btn-triage"
-            onClick={onOpenTriage}
-            className="relative flex items-center justify-center w-full h-12 text-[#BAC8D7] hover:bg-[#FAF8F3]/10 hover:text-[#FAF8F3] transition-colors"
-            title="Benthic Curation Queue (19 Pending)"
+            onClick={() => onSelectTab('curation')}
+            className={`relative flex items-center justify-center w-full h-12 transition-colors ${
+              activeTab === 'curation'
+                ? 'bg-[#1E5F74] text-[#FAF8F3] border-l-2 border-[#9CD7EF]'
+                : 'text-[#BAC8D7] hover:bg-[#FAF8F3]/10 hover:text-[#FAF8F3]'
+            }`}
+            title="Curation Queue (19 Pending)"
             type="button"
           >
             <ClipboardCheck size={20} />
@@ -96,6 +102,36 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
             >
               19
             </span>
+          </button>
+
+          <button
+            id="nav-btn-analytics"
+            onClick={() => onSelectTab('analytics')}
+            className={`relative flex items-center justify-center w-full h-12 transition-colors ${
+              activeTab === 'analytics'
+                ? 'bg-[#1E5F74] text-[#FAF8F3] border-l-2 border-[#9CD7EF]'
+                : 'text-[#BAC8D7] hover:bg-[#FAF8F3]/10 hover:text-[#FAF8F3]'
+            }`}
+            title="Station Analytics (HP-S3 & Transects)"
+            type="button"
+          >
+            <BarChart3 size={20} />
+            <span className="sr-only">Station Analytics</span>
+          </button>
+
+          <button
+            id="nav-btn-specimen"
+            onClick={() => onSelectTab('specimen')}
+            className={`relative flex items-center justify-center w-full h-12 transition-colors ${
+              activeTab === 'specimen'
+                ? 'bg-[#1E5F74] text-[#FAF8F3] border-l-2 border-[#9CD7EF]'
+                : 'text-[#BAC8D7] hover:bg-[#FAF8F3]/10 hover:text-[#FAF8F3]'
+            }`}
+            title="Photo-Quadrat Specimen Workstation (IMG_4018_HP_S3)"
+            type="button"
+          >
+            <Layers size={20} />
+            <span className="sr-only">Photo-Quadrat Specimen Workstation</span>
           </button>
 
           <button
