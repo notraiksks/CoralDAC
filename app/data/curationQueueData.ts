@@ -79,7 +79,6 @@ export const INITIAL_CURATION_QUEUE: CurationRecord[] = [
       'https://lh3.googleusercontent.com/aida-public/AB6AXuA9SxFjeV90cnVjonUIBBTD_t27TIRImvirZeQ-yK4FmjPb1eINi3snxRVgh99fbnHBDyZM_UEDKPmPicnaC97Afawqtq6yb51_9_J5j0ExKLQIhPkmbESvrkipURrpNYnzHyQ_EbQPm9k72ul-2mQmE7JGrBsTTZWbCQepL_rcNpaok7_fCnI3x5bOdEkZVVg8VKWaFeQ4DiCnlq9NSc2bu02QMH4BqZ2dqe6arvr226hq05XK_AGr',
     stationCoordinates: "16°49'14.2\"S, 146°13'08.7\"E",
     status: 'pending',
-    marginalia: '',
   },
   {
     id: 'B2026-088',
@@ -147,7 +146,6 @@ export const INITIAL_CURATION_QUEUE: CurationRecord[] = [
       'https://lh3.googleusercontent.com/aida-public/AB6AXuA9SxFjeV90cnVjonUIBBTD_t27TIRImvirZeQ-yK4FmjPb1eINi3snxRVgh99fbnHBDyZM_UEDKPmPicnaC97Afawqtq6yb51_9_J5j0ExKLQIhPkmbESvrkipURrpNYnzHyQ_EbQPm9k72ul-2mQmE7JGrBsTTZWbCQepL_rcNpaok7_fCnI3x5bOdEkZVVg8VKWaFeQ4DiCnlq9NSc2bu02QMH4BqZ2dqe6arvr226hq05XK_AGr',
     stationCoordinates: "14°32'02.1\"S, 145°27'44.8\"E",
     status: 'pending',
-    marginalia: '',
   },
   {
     id: 'B2026-087',
@@ -215,7 +213,6 @@ export const INITIAL_CURATION_QUEUE: CurationRecord[] = [
       'https://lh3.googleusercontent.com/aida-public/AB6AXuDFSzmVw0jAK4uY2NUpQFTcBM9Z0mIk1Wgya3KYNvMTXUlSdjhWQ2KAI9trS1sqZkC6Gy-ACAz2co2cKnWTjhIkcfdpr8VXgqPBbsm6W3L88StBbBZ94TQgKBzOkwtT810ltaptxnJ8R8C6krNby4QEesraKidgkGFi6IJ9trNNd92cdeSOaYShb7RRtBcIYk3WBeLn99qCoaY6mZgp8-cJyrisqf_y92xRHdIXBY0iMFX6c9gbCytK',
     stationCoordinates: "16°31'19.8\"S, 146°01'12.4\"E",
     status: 'pending',
-    marginalia: '',
   },
   {
     id: 'B2026-086',
@@ -270,7 +267,6 @@ export const INITIAL_CURATION_QUEUE: CurationRecord[] = [
       'https://lh3.googleusercontent.com/aida-public/AB6AXuA9SxFjeV90cnVjonUIBBTD_t27TIRImvirZeQ-yK4FmjPb1eINi3snxRVgh99fbnHBDyZM_UEDKPmPicnaC97Afawqtq6yb51_9_J5j0ExKLQIhPkmbESvrkipURrpNYnzHyQ_EbQPm9k72ul-2mQmE7JGrBsTTZWbCQepL_rcNpaok7_fCnI3x5bOdEkZVVg8VKWaFeQ4DiCnlq9NSc2bu02QMH4BqZ2dqe6arvr226hq05XK_AGr',
     stationCoordinates: "18°33'10.4\"S, 146°29'42.1\"E",
     status: 'pending',
-    marginalia: '',
   },
   {
     id: 'B2026-085',
@@ -325,7 +321,6 @@ export const INITIAL_CURATION_QUEUE: CurationRecord[] = [
       'https://lh3.googleusercontent.com/aida-public/AB6AXuA9SxFjeV90cnVjonUIBBTD_t27TIRImvirZeQ-yK4FmjPb1eINi3snxRVgh99fbnHBDyZM_UEDKPmPicnaC97Afawqtq6yb51_9_J5j0ExKLQIhPkmbESvrkipURrpNYnzHyQ_EbQPm9k72ul-2mQmE7JGrBsTTZWbCQepL_rcNpaok7_fCnI3x5bOdEkZVVg8VKWaFeQ4DiCnlq9NSc2bu02QMH4BqZ2dqe6arvr226hq05XK_AGr',
     stationCoordinates: "16°49'14.2\"S, 146°13'08.7\"E",
     status: 'pending',
-    marginalia: '',
   },
   {
     id: 'B2026-084',
@@ -380,7 +375,6 @@ export const INITIAL_CURATION_QUEUE: CurationRecord[] = [
       'https://lh3.googleusercontent.com/aida-public/AB6AXuA9SxFjeV90cnVjonUIBBTD_t27TIRImvirZeQ-yK4FmjPb1eINi3snxRVgh99fbnHBDyZM_UEDKPmPicnaC97Afawqtq6yb51_9_J5j0ExKLQIhPkmbESvrkipURrpNYnzHyQ_EbQPm9k72ul-2mQmE7JGrBsTTZWbCQepL_rcNpaok7_fCnI3x5bOdEkZVVg8VKWaFeQ4DiCnlq9NSc2bu02QMH4BqZ2dqe6arvr226hq05XK_AGr',
     stationCoordinates: "14°32'02.1\"S, 145°27'44.8\"E",
     status: 'pending',
-    marginalia: '',
   },
   {
     id: 'B2026-083',
@@ -435,7 +429,6 @@ export const INITIAL_CURATION_QUEUE: CurationRecord[] = [
       'https://lh3.googleusercontent.com/aida-public/AB6AXuDFSzmVw0jAK4uY2NUpQFTcBM9Z0mIk1Wgya3KYNvMTXUlSdjhWQ2KAI9trS1sqZkC6Gy-ACAz2co2cKnWTjhIkcfdpr8VXgqPBbsm6W3L88StBbBZ94TQgKBzOkwtT810ltaptxnJ8R8C6krNby4QEesraKidgkGFi6IJ9trNNd92cdeSOaYShb7RRtBcIYk3WBeLn99qCoaY6mZgp8-cJyrisqf_y92xRHdIXBY0iMFX6c9gbCytK',
     stationCoordinates: "16°31'19.8\"S, 146°01'12.4\"E",
     status: 'pending',
-    marginalia: '',
   },
   {
     id: 'B2026-082',
@@ -490,7 +483,6 @@ export const INITIAL_CURATION_QUEUE: CurationRecord[] = [
       'https://lh3.googleusercontent.com/aida-public/AB6AXuA9SxFjeV90cnVjonUIBBTD_t27TIRImvirZeQ-yK4FmjPb1eINi3snxRVgh99fbnHBDyZM_UEDKPmPicnaC97Afawqtq6yb51_9_J5j0ExKLQIhPkmbESvrkipURrpNYnzHyQ_EbQPm9k72ul-2mQmE7JGrBsTTZWbCQepL_rcNpaok7_fCnI3x5bOdEkZVVg8VKWaFeQ4DiCnlq9NSc2bu02QMH4BqZ2dqe6arvr226hq05XK_AGr',
     stationCoordinates: "18°33'10.4\"S, 146°29'42.1\"E",
     status: 'pending',
-    marginalia: '',
   },
   {
     id: 'B2026-081',
@@ -545,7 +537,6 @@ export const INITIAL_CURATION_QUEUE: CurationRecord[] = [
       'https://lh3.googleusercontent.com/aida-public/AB6AXuA9SxFjeV90cnVjonUIBBTD_t27TIRImvirZeQ-yK4FmjPb1eINi3snxRVgh99fbnHBDyZM_UEDKPmPicnaC97Afawqtq6yb51_9_J5j0ExKLQIhPkmbESvrkipURrpNYnzHyQ_EbQPm9k72ul-2mQmE7JGrBsTTZWbCQepL_rcNpaok7_fCnI3x5bOdEkZVVg8VKWaFeQ4DiCnlq9NSc2bu02QMH4BqZ2dqe6arvr226hq05XK_AGr',
     stationCoordinates: "16°49'14.2\"S, 146°13'08.7\"E",
     status: 'pending',
-    marginalia: '',
   },
   {
     id: 'B2026-080',
@@ -600,7 +591,6 @@ export const INITIAL_CURATION_QUEUE: CurationRecord[] = [
       'https://lh3.googleusercontent.com/aida-public/AB6AXuA9SxFjeV90cnVjonUIBBTD_t27TIRImvirZeQ-yK4FmjPb1eINi3snxRVgh99fbnHBDyZM_UEDKPmPicnaC97Afawqtq6yb51_9_J5j0ExKLQIhPkmbESvrkipURrpNYnzHyQ_EbQPm9k72ul-2mQmE7JGrBsTTZWbCQepL_rcNpaok7_fCnI3x5bOdEkZVVg8VKWaFeQ4DiCnlq9NSc2bu02QMH4BqZ2dqe6arvr226hq05XK_AGr',
     stationCoordinates: "14°32'02.1\"S, 145°27'44.8\"E",
     status: 'pending',
-    marginalia: '',
   },
   {
     id: 'B2026-079',
@@ -655,7 +645,6 @@ export const INITIAL_CURATION_QUEUE: CurationRecord[] = [
       'https://lh3.googleusercontent.com/aida-public/AB6AXuDFSzmVw0jAK4uY2NUpQFTcBM9Z0mIk1Wgya3KYNvMTXUlSdjhWQ2KAI9trS1sqZkC6Gy-ACAz2co2cKnWTjhIkcfdpr8VXgqPBbsm6W3L88StBbBZ94TQgKBzOkwtT810ltaptxnJ8R8C6krNby4QEesraKidgkGFi6IJ9trNNd92cdeSOaYShb7RRtBcIYk3WBeLn99qCoaY6mZgp8-cJyrisqf_y92xRHdIXBY0iMFX6c9gbCytK',
     stationCoordinates: "16°31'19.8\"S, 146°01'12.4\"E",
     status: 'pending',
-    marginalia: '',
   },
   {
     id: 'B2026-078',
@@ -710,7 +699,6 @@ export const INITIAL_CURATION_QUEUE: CurationRecord[] = [
       'https://lh3.googleusercontent.com/aida-public/AB6AXuA9SxFjeV90cnVjonUIBBTD_t27TIRImvirZeQ-yK4FmjPb1eINi3snxRVgh99fbnHBDyZM_UEDKPmPicnaC97Afawqtq6yb51_9_J5j0ExKLQIhPkmbESvrkipURrpNYnzHyQ_EbQPm9k72ul-2mQmE7JGrBsTTZWbCQepL_rcNpaok7_fCnI3x5bOdEkZVVg8VKWaFeQ4DiCnlq9NSc2bu02QMH4BqZ2dqe6arvr226hq05XK_AGr',
     stationCoordinates: "18°33'10.4\"S, 146°29'42.1\"E",
     status: 'pending',
-    marginalia: '',
   },
   {
     id: 'B2026-077',
@@ -765,7 +753,6 @@ export const INITIAL_CURATION_QUEUE: CurationRecord[] = [
       'https://lh3.googleusercontent.com/aida-public/AB6AXuA9SxFjeV90cnVjonUIBBTD_t27TIRImvirZeQ-yK4FmjPb1eINi3snxRVgh99fbnHBDyZM_UEDKPmPicnaC97Afawqtq6yb51_9_J5j0ExKLQIhPkmbESvrkipURrpNYnzHyQ_EbQPm9k72ul-2mQmE7JGrBsTTZWbCQepL_rcNpaok7_fCnI3x5bOdEkZVVg8VKWaFeQ4DiCnlq9NSc2bu02QMH4BqZ2dqe6arvr226hq05XK_AGr',
     stationCoordinates: "16°49'14.2\"S, 146°13'08.7\"E",
     status: 'pending',
-    marginalia: '',
   },
   {
     id: 'B2026-076',
@@ -820,7 +807,6 @@ export const INITIAL_CURATION_QUEUE: CurationRecord[] = [
       'https://lh3.googleusercontent.com/aida-public/AB6AXuA9SxFjeV90cnVjonUIBBTD_t27TIRImvirZeQ-yK4FmjPb1eINi3snxRVgh99fbnHBDyZM_UEDKPmPicnaC97Afawqtq6yb51_9_J5j0ExKLQIhPkmbESvrkipURrpNYnzHyQ_EbQPm9k72ul-2mQmE7JGrBsTTZWbCQepL_rcNpaok7_fCnI3x5bOdEkZVVg8VKWaFeQ4DiCnlq9NSc2bu02QMH4BqZ2dqe6arvr226hq05XK_AGr',
     stationCoordinates: "14°32'02.1\"S, 145°27'44.8\"E",
     status: 'pending',
-    marginalia: '',
   },
   {
     id: 'B2026-075',
@@ -875,7 +861,6 @@ export const INITIAL_CURATION_QUEUE: CurationRecord[] = [
       'https://lh3.googleusercontent.com/aida-public/AB6AXuDFSzmVw0jAK4uY2NUpQFTcBM9Z0mIk1Wgya3KYNvMTXUlSdjhWQ2KAI9trS1sqZkC6Gy-ACAz2co2cKnWTjhIkcfdpr8VXgqPBbsm6W3L88StBbBZ94TQgKBzOkwtT810ltaptxnJ8R8C6krNby4QEesraKidgkGFi6IJ9trNNd92cdeSOaYShb7RRtBcIYk3WBeLn99qCoaY6mZgp8-cJyrisqf_y92xRHdIXBY0iMFX6c9gbCytK',
     stationCoordinates: "16°31'19.8\"S, 146°01'12.4\"E",
     status: 'pending',
-    marginalia: '',
   },
   {
     id: 'B2026-074',
@@ -930,7 +915,6 @@ export const INITIAL_CURATION_QUEUE: CurationRecord[] = [
       'https://lh3.googleusercontent.com/aida-public/AB6AXuA9SxFjeV90cnVjonUIBBTD_t27TIRImvirZeQ-yK4FmjPb1eINi3snxRVgh99fbnHBDyZM_UEDKPmPicnaC97Afawqtq6yb51_9_J5j0ExKLQIhPkmbESvrkipURrpNYnzHyQ_EbQPm9k72ul-2mQmE7JGrBsTTZWbCQepL_rcNpaok7_fCnI3x5bOdEkZVVg8VKWaFeQ4DiCnlq9NSc2bu02QMH4BqZ2dqe6arvr226hq05XK_AGr',
     stationCoordinates: "18°33'10.4\"S, 146°29'42.1\"E",
     status: 'pending',
-    marginalia: '',
   },
   {
     id: 'B2026-073',
@@ -985,7 +969,6 @@ export const INITIAL_CURATION_QUEUE: CurationRecord[] = [
       'https://lh3.googleusercontent.com/aida-public/AB6AXuA9SxFjeV90cnVjonUIBBTD_t27TIRImvirZeQ-yK4FmjPb1eINi3snxRVgh99fbnHBDyZM_UEDKPmPicnaC97Afawqtq6yb51_9_J5j0ExKLQIhPkmbESvrkipURrpNYnzHyQ_EbQPm9k72ul-2mQmE7JGrBsTTZWbCQepL_rcNpaok7_fCnI3x5bOdEkZVVg8VKWaFeQ4DiCnlq9NSc2bu02QMH4BqZ2dqe6arvr226hq05XK_AGr',
     stationCoordinates: "16°49'14.2\"S, 146°13'08.7\"E",
     status: 'pending',
-    marginalia: '',
   },
   {
     id: 'B2026-072',
@@ -1040,7 +1023,6 @@ export const INITIAL_CURATION_QUEUE: CurationRecord[] = [
       'https://lh3.googleusercontent.com/aida-public/AB6AXuA9SxFjeV90cnVjonUIBBTD_t27TIRImvirZeQ-yK4FmjPb1eINi3snxRVgh99fbnHBDyZM_UEDKPmPicnaC97Afawqtq6yb51_9_J5j0ExKLQIhPkmbESvrkipURrpNYnzHyQ_EbQPm9k72ul-2mQmE7JGrBsTTZWbCQepL_rcNpaok7_fCnI3x5bOdEkZVVg8VKWaFeQ4DiCnlq9NSc2bu02QMH4BqZ2dqe6arvr226hq05XK_AGr',
     stationCoordinates: "14°32'02.1\"S, 145°27'44.8\"E",
     status: 'pending',
-    marginalia: '',
   },
   {
     id: 'B2026-071',
@@ -1095,6 +1077,5 @@ export const INITIAL_CURATION_QUEUE: CurationRecord[] = [
       'https://lh3.googleusercontent.com/aida-public/AB6AXuDFSzmVw0jAK4uY2NUpQFTcBM9Z0mIk1Wgya3KYNvMTXUlSdjhWQ2KAI9trS1sqZkC6Gy-ACAz2co2cKnWTjhIkcfdpr8VXgqPBbsm6W3L88StBbBZ94TQgKBzOkwtT810ltaptxnJ8R8C6krNby4QEesraKidgkGFi6IJ9trNNd92cdeSOaYShb7RRtBcIYk3WBeLn99qCoaY6mZgp8-cJyrisqf_y92xRHdIXBY0iMFX6c9gbCytK',
     stationCoordinates: "16°31'19.8\"S, 146°01'12.4\"E",
     status: 'pending',
-    marginalia: '',
   },
 ];

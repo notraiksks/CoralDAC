@@ -4,13 +4,11 @@ import { ShieldCheck, Send, RotateCcw, ArrowLeft, CheckCheck, Loader2 } from 'lu
 interface ReviewActionsSectionProps {
   onBackToLocation?: () => void;
   onStartOver?: () => void;
-  onEnqueued?: () => void;
 }
 
 export const ReviewActionsSection: React.FC<ReviewActionsSectionProps> = ({
   onBackToLocation,
   onStartOver,
-  onEnqueued,
 }) => {
   const [submissionStatus, setSubmissionStatus] = useState<'idle' | 'submitting' | 'enqueued'>('idle');
 
@@ -19,7 +17,6 @@ export const ReviewActionsSection: React.FC<ReviewActionsSectionProps> = ({
     setSubmissionStatus('submitting');
     setTimeout(() => {
       setSubmissionStatus('enqueued');
-      onEnqueued?.();
     }, 800);
   };
 

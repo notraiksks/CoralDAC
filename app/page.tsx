@@ -91,8 +91,6 @@ export default function HomePage() {
               selectedStationId={selectedStationId}
               onSelectStation={setSelectedStationId}
               onNavigateToMap={() => setActiveTab('map')}
-              onNavigateToSubmissions={() => setActiveTab('submissions')}
-              onOpenCurationQueue={() => setIsTriageOpen(true)}
             />
           )}
 

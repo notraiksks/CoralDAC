@@ -57,9 +57,7 @@ export interface CurationRecord {
   stationCoordinates: string;
   mapImage: string;
 
-  // Review Status & Notes
+  // Review Status
   status: 'pending' | 'approved' | 'rejected';
-  marginalia: string;
-  rejectReason?: string;
 }
 

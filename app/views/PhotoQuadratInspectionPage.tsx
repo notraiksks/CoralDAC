@@ -9,10 +9,8 @@ import {
   ZoomOut,
   Contrast,
   FileSpreadsheet,
-  Flag,
   MapPin,
   ShieldCheck,
-  Check,
   X,
   Layers,
 } from 'lucide-react';
@@ -53,26 +51,10 @@ export const PhotoQuadratInspectionPage: React.FC<PhotoQuadratInspectionPageProp
   });
   const canvasRef = useRef<HTMLDivElement>(null);
 
-  // Toast / notification feedback
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  // Re-annotation Flag Modal
-  const [isFlagModalOpen, setIsFlagModalOpen] = useState<boolean>(false);
-  const [flagReason, setFlagReason] = useState<string>('Condition classification ambiguity');
-  const [flagNotes, setFlagNotes] = useState<string>('');
-  const [flagSubmitted, setFlagSubmitted] = useState<boolean>(false);
 
   // Patch Grid Filters & Sort
   const [patchFilter, setPatchFilter] = useState<'ALL' | 'LC' | 'PB' | 'DC' | 'DCA'>('ALL');
   const [patchSort, setPatchSort] = useState<'CONF_DESC' | 'AREA_DESC' | 'ID_ASC'>('CONF_DESC');
-
-  // Trigger feedback toast
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 3500);
-  };
 
   // Mouse move handler on specimen canvas
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -139,7 +121,6 @@ export const PhotoQuadratInspectionPage: React.FC<PhotoQuadratInspectionPageProp
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showToast('Downloaded patch matrix CSV (19 specimen records)');
   };
 
   // Copy reference link
@@ -148,19 +129,6 @@ export const PhotoQuadratInspectionPage: React.FC<PhotoQuadratInspectionPageProp
     if (navigator.clipboard) {
       navigator.clipboard.writeText(auditUrl);
     }
-    showToast('Station reference copied to clipboard: HP-S3/IMG_4018');
-  };
-
-  // Submit re-annotation flag
-  const handleSubmitFlag = (e: React.FormEvent) => {
-    e.preventDefault();
-    setFlagSubmitted(true);
-    setTimeout(() => {
-      setIsFlagModalOpen(false);
-      setFlagSubmitted(false);
-      setFlagNotes('');
-      showToast('Specimen flagged for benthic review (Queue #QA-892)');
-    }, 1000);
   };
 
   return (
@@ -168,13 +136,6 @@ export const PhotoQuadratInspectionPage: React.FC<PhotoQuadratInspectionPageProp
       id="photo-quadrat-inspection-page"
       className="w-full min-h-screen bg-[#E7E2D4] pb-24"
     >
-      {/* Toast Notification Banner */}
-      {toastMessage && (
-        <div className="fixed top-16 right-6 z-50 bg-[#16232E] text-[#FAF8F3] px-4 py-2.5 font-mono text-xs shadow-lg border-l-4 border-[#00475A] flex items-center gap-2.5 animate-in fade-in slide-in-from-top-2">
-          <Check className="text-[#9CD7EF]" size={15} />
-          <span>{toastMessage}</span>
-        </div>
-      )}
 
       {/* Main Container */}
       <div className="max-w-[1720px] mx-auto p-3 sm:p-5 flex flex-col gap-4">
@@ -482,15 +443,6 @@ export const PhotoQuadratInspectionPage: React.FC<PhotoQuadratInspectionPageProp
                 </button>
               </div>
 
-              <button
-                id="btn-flag-reannotation"
-                type="button"
-                onClick={() => setIsFlagModalOpen(true)}
-                className="px-3 py-1.5 bg-[#FFDAD6]/60 hover:bg-[#FFDAD6] text-[#93000A] font-mono text-[11px] uppercase flex items-center gap-1.5 border border-[#BA1A1A]/30 transition-colors cursor-pointer"
-              >
-                <Flag size={14} />
-                <span>FLAG FOR QA RE-ANNOTATION</span>
-              </button>
             </div>
           </div>
 
@@ -627,10 +579,6 @@ export const PhotoQuadratInspectionPage: React.FC<PhotoQuadratInspectionPageProp
                     <span className="text-[#53606D]">COORDINATES</span>
                     <span className="font-semibold">13.5123° N, 120.9573° E</span>
                   </div>
-                  <div className="flex justify-between text-[10px] text-[#53606D]">
-                    <span>DATUM STANDARD</span>
-                    <span>WGS 84</span>
-                  </div>
                 </div>
 
                 {/* ML Model Pipeline Stack */}
@@ -647,46 +595,6 @@ export const PhotoQuadratInspectionPage: React.FC<PhotoQuadratInspectionPageProp
                     <span>Benthic Health Classifier</span>
                     <span>ResNet50 v2 (4 Health Classes)</span>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Quality Assurance Sign-Off Card */}
-            <div className="bg-[#FFFFFF] p-3.5 sm:p-4 shadow-sm relative overflow-hidden border border-[#D1CBBF]">
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#1E5F74]" />
-              <div className="pl-2">
-                <div className="flex items-center justify-between pb-1 mb-2 border-b border-[#E7E2D4]">
-                  <span className="font-mono text-xs uppercase text-[#1D1C13] font-bold">
-                    Quality Assurance Audit
-                  </span>
-                  <span className="font-mono text-[10px] text-[#39460B] font-semibold">
-                    BENTHIC ASSESSMENT
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-6 h-6 rounded-full bg-[#1E5F74] text-white flex items-center justify-center font-mono text-[10px] font-bold">
-                    QA
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-serif text-xs font-bold text-[#1D1C13]">
-                      Benthic Quality Review Panel
-                    </span>
-                    <span className="font-mono text-[9px] text-[#53606D]">
-                      Assessment Log · 2026-03-04 11:15 UTC
-                    </span>
-                  </div>
-                </div>
-
-                <p className="font-serif text-xs text-[#40484C] bg-[#E7E2D4]/50 p-2.5 leading-relaxed border-l-2 border-[#1E5F74]">
-                  &ldquo;Verified bounding box detections and ResNet50 health condition classifications
-                  for Quadrat #01. Live coral, bleached colonies, and algal turf boundaries adhere to
-                  standard benthic health assessment protocols.&rdquo;
-                </p>
-
-                <div className="mt-3 flex items-center justify-between font-mono text-[10px] text-[#53606D] pt-1">
-                  <span>AUDIT STATUS:</span>
-                  <span className="text-[#39460B] font-semibold">APPROVED FOR BENTHIC ARCHIVE</span>
                 </div>
               </div>
             </div>
@@ -886,7 +794,6 @@ export const PhotoQuadratInspectionPage: React.FC<PhotoQuadratInspectionPageProp
                     if (selectedPatch.boxTargetId) {
                       setActiveBoxId(selectedPatch.boxTargetId);
                       setSelectedPatch(null);
-                      showToast(`Focused on ${selectedPatch.name} bounding box`);
                     }
                   }}
                   className="px-3 py-1.5 bg-[#00475A] hover:bg-[#003543] text-white font-mono text-xs cursor-pointer"
@@ -899,98 +806,6 @@ export const PhotoQuadratInspectionPage: React.FC<PhotoQuadratInspectionPageProp
         </div>
       )}
 
-      {/* 5. Flag for Expert Re-Annotation Modal */}
-      {isFlagModalOpen && (
-        <div
-          id="flag-reannotation-modal"
-          className="fixed inset-0 z-50 bg-[#16232E]/80 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={() => setIsFlagModalOpen(false)}
-        >
-          <div
-            id="flag-reannotation-dialog"
-            className="w-full max-w-md bg-[#FAF8F3] border-2 border-[#16232E] shadow-[8px_8px_0px_#16232E] flex flex-col overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="bg-[#BA1A1A] text-white px-4 py-2.5 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Flag size={15} />
-                <span className="font-mono text-xs font-bold uppercase">
-                  Flag for Quality Assurance Review
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsFlagModalOpen(false)}
-                className="text-white hover:opacity-80 cursor-pointer"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmitFlag} className="p-4 flex flex-col gap-3 font-mono text-xs">
-              <p className="font-sans text-xs text-[#53606D]">
-                Mark photo-quadrat <strong className="text-[#1D1C13]">IMG_4018_HP_S3.JPG</strong>{' '}
-                for quality assurance review of benthic health classifications.
-              </p>
-
-              <div>
-                <label className="block text-[#1D1C13] font-semibold mb-1 uppercase text-[10px]">
-                  Review Reason
-                </label>
-                <select
-                  value={flagReason}
-                  onChange={(e) => setFlagReason(e.target.value)}
-                  className="w-full bg-[#FFFFFF] border border-[#D1CBBF] p-2 text-xs text-[#1D1C13] focus:outline-none focus:border-[#00475A]"
-                >
-                  <option value="Condition classification ambiguity">
-                    Condition classification ambiguity
-                  </option>
-                  <option value="Border misalignment">
-                    Bounding box border misalignment
-                  </option>
-                  <option value="Health class discrepancy">
-                    Health class discrepancy (LC vs PB vs DC vs DCA)
-                  </option>
-                  <option value="Turf algae confusion">
-                    Turf algae vs substrate distinction
-                  </option>
-                  <option value="Other">Other protocol anomaly</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[#1D1C13] font-semibold mb-1 uppercase text-[10px]">
-                  Reviewer Notes / Annotations
-                </label>
-                <textarea
-                  rows={3}
-                  value={flagNotes}
-                  onChange={(e) => setFlagNotes(e.target.value)}
-                  placeholder="Describe specific bounding box or colony anomaly..."
-                  className="w-full bg-[#FFFFFF] border border-[#D1CBBF] p-2 font-sans text-xs text-[#1D1C13] focus:outline-none focus:border-[#00475A]"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2 border-t border-[#E7E2D4]">
-                <button
-                  type="button"
-                  onClick={() => setIsFlagModalOpen(false)}
-                  className="px-3 py-1.5 bg-[#FAF8F3] hover:bg-[#E7E2D4] text-[#1D1C13] border border-[#D1CBBF] cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={flagSubmitted}
-                  className="px-4 py-1.5 bg-[#BA1A1A] hover:bg-[#93000A] text-white font-bold cursor-pointer transition-colors"
-                >
-                  {flagSubmitted ? 'Submitting...' : 'Submit Flag'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

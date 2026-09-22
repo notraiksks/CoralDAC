@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import {
-  FolderOpen,
   AddCircle,
   Check,
   Close,
@@ -12,13 +11,11 @@ import {
   Visibility,
   Map as MapIcon,
   Assignment,
-  Feedback,
   Refresh,
   Download,
   ChevronLeft,
   ChevronRight,
   FindInPage,
-  Info,
   Block,
   Warning,
   Cancel,
@@ -41,23 +38,8 @@ export const MySubmissionsPage: React.FC<MySubmissionsPageProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | SubmissionStatus>('all');
   const [dateRangeFilter, setDateRangeFilter] = useState('FEB 20, 2026 – MAR 05, 2026');
-  const [expandedRowIds, setExpandedRowIds] = useState<Set<string>>(
-    new Set(['SUB-2026-003'])
-  );
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 5;
-
-  const toggleRowExpansion = (id: string) => {
-    setExpandedRowIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
 
   // Metrics calculation
   const totalCount = submissions.length;
@@ -88,7 +70,6 @@ export const MySubmissionsPage: React.FC<MySubmissionsPageProps> = ({
         !q ||
         item.file.toLowerCase().includes(q) ||
         item.stationName.toLowerCase().includes(q) ||
-        item.transectSector.toLowerCase().includes(q) ||
         item.stationId.toLowerCase().includes(q);
 
       return matchesStatus && matchesQuery;
@@ -127,7 +108,6 @@ export const MySubmissionsPage: React.FC<MySubmissionsPageProps> = ({
       `${s.uploadedDate} ${s.uploadedTimeUtc}`,
       s.stationId,
       s.stationName,
-      s.transectSector,
       `"${s.coordinates}"`,
       s.depth,
       s.provisionalCounts.lc,
@@ -167,8 +147,6 @@ export const MySubmissionsPage: React.FC<MySubmissionsPageProps> = ({
               <span>FIELD CONTRIBUTIONS ARCHIVE</span>
               <span className="text-[#D1CBBF]">•</span>
               <span className="text-[#1E5F74] font-semibold">{totalCount} TOTAL SURVEYS</span>
-              <span className="text-[#D1CBBF]">•</span>
-              <span className="text-[#53606D]">INDEXING CYCLE 2026-Q1</span>
             </p>
           </div>
 
@@ -433,7 +411,6 @@ export const MySubmissionsPage: React.FC<MySubmissionsPageProps> = ({
                   const isRejected = row.status === 'rejected';
                   const isApproved = row.status === 'approved';
                   const isPending = row.status === 'pending';
-                  const isExpanded = expandedRowIds.has(row.id);
 
                   return (
                     <React.Fragment key={row.id}>
@@ -523,7 +500,6 @@ export const MySubmissionsPage: React.FC<MySubmissionsPageProps> = ({
                                   isRejected ? 'text-[#BA1A1A]' : 'text-[#53606D]'
                                 }`}
                               >
-                                ({row.transectSector})
                               </span>
                             </div>
                             <span className="font-mono text-[10px] text-[#40484C] tabular-nums">
@@ -587,9 +563,6 @@ export const MySubmissionsPage: React.FC<MySubmissionsPageProps> = ({
                                   Pending
                                 </span>
                               </div>
-                              <p className="font-mono text-[10px] text-[#53606D] mt-1">
-                                {row.statusDetail}
-                              </p>
                             </>
                           )}
 
@@ -601,9 +574,6 @@ export const MySubmissionsPage: React.FC<MySubmissionsPageProps> = ({
                                   Approved
                                 </span>
                               </div>
-                              <p className="font-mono text-[10px] text-[#53606D] mt-1">
-                                {row.statusDetail}
-                              </p>
                             </>
                           )}
 
@@ -615,9 +585,6 @@ export const MySubmissionsPage: React.FC<MySubmissionsPageProps> = ({
                                   Rejected
                                 </span>
                               </div>
-                              <p className="font-mono text-[10px] text-[#BA1A1A] mt-1">
-                                {row.statusDetail}
-                              </p>
                             </>
                           )}
                         </td>
@@ -663,14 +630,6 @@ export const MySubmissionsPage: React.FC<MySubmissionsPageProps> = ({
                               <>
                                 <button
                                   type="button"
-                                  onClick={() => toggleRowExpansion(row.id)}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#F3EEDF] border border-[#16232E] hover:bg-[#EDE8DA] text-[#1D1C13] font-mono text-[10px] uppercase transition-colors cursor-pointer"
-                                >
-                                  <Feedback size={13} />
-                                  <span>{isExpanded ? 'Hide Note' : 'View Note'}</span>
-                                </button>
-                                <button
-                                  type="button"
                                   onClick={onNavigateToUpload}
                                   className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#BA1A1A] border border-[#16232E] hover:bg-[#16232E] text-[#FFFFFF] font-mono text-[10px] uppercase transition-colors cursor-pointer"
                                 >
@@ -683,43 +642,6 @@ export const MySubmissionsPage: React.FC<MySubmissionsPageProps> = ({
                         </td>
                       </tr>
 
-                      {/* Reviewer Note Marginalia Drawer for Rejected Records */}
-                      {isRejected && isExpanded && row.rejectReason && (
-                        <tr className="bg-[#F9F3E5] border-b border-[#D1CBBF]/80">
-                          <td className="py-3 px-6" colSpan={7}>
-                            <div className="border-l-4 border-[#BA1A1A] bg-[#FAF8F3] p-3.5 border-r border-t border-b border-[#D1CBBF] shadow-sm">
-                              <div className="flex items-start justify-between gap-4 flex-wrap">
-                                <div className="flex flex-col gap-1 max-w-3xl">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="font-mono text-[10px] text-[#BA1A1A] uppercase font-bold tracking-wider">
-                                      {row.rejectReason.recordCode}
-                                    </span>
-                                    <span className="text-[#D1CBBF]">|</span>
-                                    <span className="font-mono text-[10px] text-[#53606D]">
-                                      Reviewer: {row.rejectReason.reviewer}
-                                    </span>
-                                  </div>
-                                  <p className="font-serif text-[13px] leading-relaxed italic text-[#1D1C13] mt-1">
-                                    &ldquo;{row.rejectReason.note}&rdquo;
-                                  </p>
-                                </div>
-                                <div className="flex flex-col items-end gap-1 shrink-0">
-                                  <span className="font-mono text-[10px] text-[#53606D]">
-                                    {row.rejectReason.codeDetail}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={onNavigateToUpload}
-                                    className="text-[#BA1A1A] font-mono text-[10px] uppercase underline hover:text-[#1D1C13] font-semibold cursor-pointer"
-                                  >
-                                    Proceed to Guided Resubmission →
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
                     </React.Fragment>
                   );
                 })}
@@ -836,26 +758,6 @@ export const MySubmissionsPage: React.FC<MySubmissionsPageProps> = ({
           </div>
         </div>
 
-        {/* Footnote Marginalia Annotation Card */}
-        <div className="border border-[#D1CBBF] bg-[#FAF8F3] p-3.5 mb-6">
-          <div className="flex items-start gap-3">
-            <Info size={20} className="text-[#1E5F74] mt-0.5 shrink-0" />
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-mono text-[10px] uppercase tracking-wider font-bold text-[#1E5F74]">
-                  FIELD OPERATOR PROTOCOL NOTICE
-                </span>
-                <span className="text-[10px] text-[#53606D] font-mono">[STN-STD-v4.2]</span>
-              </div>
-              <p className="font-sans text-xs text-[#40484C] leading-relaxed">
-                Approved survey captures are verified by the curation review team and archived to
-                the station monitoring database. Provisional benthic counts reflect automated object
-                detection and four-class coral health assessment (Live Coral, Pale/Bleached, Dead Coral,
-                and Dead Coral with Algae).
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
