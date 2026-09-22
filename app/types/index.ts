@@ -8,7 +8,6 @@ export interface QuadratRecord {
   dominantClass: string;
   confidence: number;
   status: 'VERIFIED' | 'NEEDS_REVIEW' | 'FLAGGED';
-  notes: string;
   timestamp: string;
 }
 

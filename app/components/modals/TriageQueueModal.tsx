@@ -17,7 +17,6 @@ export const TriageQueueModal: React.FC<TriageQueueModalProps> = ({
   const [selectedQuadrat, setSelectedQuadrat] = useState<QuadratRecord>(
     station.quadrats[0]
   );
-  const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -31,8 +30,6 @@ export const TriageQueueModal: React.FC<TriageQueueModalProps> = ({
     setSelectedQuadrat((prev) =>
       prev.id === id ? { ...prev, status } : prev
     );
-    setFeedbackMsg(`Quadrat ${id} marked as ${status}`);
-    setTimeout(() => setFeedbackMsg(null), 2500);
   };
 
   return (
@@ -69,14 +66,6 @@ export const TriageQueueModal: React.FC<TriageQueueModalProps> = ({
             <X size={20} />
           </button>
         </div>
-
-        {/* Feedback alert banner */}
-        {feedbackMsg && (
-          <div className="bg-[#39460B] text-white px-5 py-1.5 font-mono text-xs flex items-center gap-2">
-            <Check size={14} />
-            <span>{feedbackMsg}</span>
-          </div>
-        )}
 
         {/* Main Content Layout */}
         <div className="flex-1 overflow-hidden grid grid-cols-1 md:grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-[#C0C8CC]">
@@ -223,14 +212,6 @@ export const TriageQueueModal: React.FC<TriageQueueModalProps> = ({
                       </div>
                     </div>
                   </div>
-                </div>
-
-                {/* Marginalia Field Log Observation */}
-                <div className="border-l-2 border-[#1E5F74] pl-3 py-1 font-sans text-xs text-[#1D1C13] bg-[#FEF9EB]/60">
-                  <span className="font-mono text-[10px] uppercase text-[#53606D] block font-semibold mb-0.5">
-                    Survey Observation Note:
-                  </span>
-                  &quot;{selectedQuadrat.notes}&quot;
                 </div>
 
                 {/* Triage Decision Buttons */}

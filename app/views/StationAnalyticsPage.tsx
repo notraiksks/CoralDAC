@@ -402,11 +402,6 @@ export const StationAnalyticsPage: React.FC<StationAnalyticsPageProps> = ({
               </div>
             </div>
           </div>
-
-          <div className="flex items-center justify-between pt-2.5 mt-2.5 text-[#53606D] font-mono text-[10px] border-t border-[#E7E2D4]">
-            <span>Validated Sampling Unit: 1.0m × 1.0m Quadrats</span>
-            <span className="font-semibold text-[#00475A]">Classification: Hard Coral Census</span>
-          </div>
         </div>
       </div>
 
@@ -422,47 +417,6 @@ export const StationAnalyticsPage: React.FC<StationAnalyticsPageProps> = ({
               <span className="font-mono text-[11px] font-semibold text-[#1D1C13] mt-0.5">
                 Feb 14 – Mar 06, 2026
               </span>
-              <span className="font-mono text-[9px] text-[#53606D]">Expedition Cycle EP-26</span>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-2.5">
-            <div className="w-8 h-8 flex items-center justify-center bg-[#F9F3E5] text-[#00475A] border border-[#D1CBBF] flex-shrink-0">
-              <Layers size={16} />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-mono text-[9px] uppercase text-[#53606D]">Survey Methodology</span>
-              <span className="font-mono text-[11px] font-semibold text-[#1D1C13] mt-0.5">
-                Fixed-Distance Transect
-              </span>
-              <span className="font-mono text-[9px] text-[#53606D]">1.0m × 1.0m Photo-Quadrats</span>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-2.5">
-            <div className="w-8 h-8 flex items-center justify-center bg-[#F9F3E5] text-[#00475A] border border-[#D1CBBF] flex-shrink-0">
-              <FolderCheck size={16} />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-mono text-[9px] uppercase text-[#53606D]">Ingest Pipeline</span>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="w-2 h-2 rounded-full bg-[#39460B]" />
-                <span className="font-mono text-[11px] font-semibold text-[#1D1C13]">All QA Approved</span>
-              </div>
-              <span className="font-mono text-[9px] text-[#53606D]">24/24 quadrats validated</span>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-2.5">
-            <div className="w-8 h-8 flex items-center justify-center bg-[#F9F3E5] text-[#00475A] border border-[#D1CBBF] flex-shrink-0">
-              <Microscope size={16} />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-mono text-[9px] uppercase text-[#53606D]">Benthic Typology</span>
-              <span className="font-mono text-[11px] font-semibold text-[#1D1C13] mt-0.5">
-                Hard Coral Assemblage
-              </span>
-              <span className="font-mono text-[9px] text-[#53606D]">Outer Fore-Reef Crest / T3</span>
             </div>
           </div>
         </div>
@@ -478,9 +432,6 @@ export const StationAnalyticsPage: React.FC<StationAnalyticsPageProps> = ({
               {filteredQuadrats.length} PHOTO-QUADRATS
             </span>
           </div>
-          <p className="font-sans text-xs text-[#53606D] mt-0.5">
-            Calibrated 1.0m × 1.0m orthogonal benthic quadrat frames with verified polygon point intercepts.
-          </p>
         </div>
 
         {/* Filters / Sorting */}

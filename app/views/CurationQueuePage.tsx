@@ -6,7 +6,6 @@ import {
   ChevronDown,
   Touchpad,
   CheckCheck,
-  Edit3,
   X,
   RotateCcw,
 } from 'lucide-react';
@@ -18,13 +17,6 @@ interface CurationQueuePageProps {
   onNavigateToSubmissions?: () => void;
   onNavigateToUpload?: () => void;
 }
-
-const REJECT_REASONS = [
-  'Image quality too low (Blur/Exposure)',
-  'Station reference mismatch',
-  'Low-confidence detections',
-  'Duplicate submission record',
-];
 
 export const CurationQueuePage: React.FC<CurationQueuePageProps> = () => {
   const [queue, setQueue] = useState<CurationRecord[]>(INITIAL_CURATION_QUEUE);
@@ -40,22 +32,12 @@ export const CurationQueuePage: React.FC<CurationQueuePageProps> = () => {
 
   // UI States
   const [activeCardIndex, setActiveCardIndex] = useState<number>(0);
-  const [openRejectMenuId, setOpenRejectMenuId] = useState<string | null>(null);
-  const [openBatchRejectMenu, setOpenBatchRejectMenu] = useState<boolean>(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // 1:1 Expand Modal
   const [expandedRecord, setExpandedRecord] = useState<CurationRecord | null>(null);
   const [modalZoom, setModalZoom] = useState<number>(1);
   const [showModalBoxes, setShowModalBoxes] = useState<boolean>(true);
   const [showModalGrid, setShowModalGrid] = useState<boolean>(true);
-
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage((prev) => (prev === msg ? null : prev));
-    }, 3200);
-  };
 
   // Filtered & Sorted items
   const filteredQueue = useMemo(() => {
@@ -130,13 +112,12 @@ export const CurationQueuePage: React.FC<CurationQueuePageProps> = () => {
       next.delete(id);
       return next;
     });
-    showToast(`Approved ${id} and committed to dataset`);
   };
 
-  const handleReject = (id: string, reason: string) => {
+  const handleReject = (id: string) => {
     setQueue((prev) =>
       prev.map((item) =>
-        item.id === id ? { ...item, status: 'rejected', rejectReason: reason } : item
+        item.id === id ? { ...item, status: 'rejected' } : item
       )
     );
     setSelectedIds((prev) => {
@@ -144,39 +125,26 @@ export const CurationQueuePage: React.FC<CurationQueuePageProps> = () => {
       next.delete(id);
       return next;
     });
-    setOpenRejectMenuId(null);
-    showToast(`Rejected ${id}: ${reason}`);
   };
 
   const handleBatchApprove = () => {
     if (selectedIds.size === 0) return;
-    const count = selectedIds.size;
     setQueue((prev) =>
       prev.map((item) => (selectedIds.has(item.id) ? { ...item, status: 'approved' } : item))
     );
     setSelectedIds(new Set());
-    showToast(`Approved ${count} survey records and committed to dataset`);
   };
 
-  const handleBatchReject = (reason: string) => {
+  const handleBatchReject = () => {
     if (selectedIds.size === 0) return;
-    const count = selectedIds.size;
     setQueue((prev) =>
       prev.map((item) =>
         selectedIds.has(item.id)
-          ? { ...item, status: 'rejected', rejectReason: reason }
+          ? { ...item, status: 'rejected' }
           : item
       )
     );
     setSelectedIds(new Set());
-    setOpenBatchRejectMenu(false);
-    showToast(`Rejected ${count} survey records: ${reason}`);
-  };
-
-  const handleMarginaliaChange = (id: string, text: string) => {
-    setQueue((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, marginalia: text } : item))
-    );
   };
 
   // Hotkeys
@@ -201,11 +169,6 @@ export const CurationQueuePage: React.FC<CurationQueuePageProps> = () => {
         if (current) {
           handleApprove(current.id);
         }
-      } else if (e.key === 'r' || e.key === 'R') {
-        const current = filteredQueue[activeCardIndex];
-        if (current) {
-          setOpenRejectMenuId((prev) => (prev === current.id ? null : current.id));
-        }
       }
     },
     [filteredQueue, activeCardIndex]
@@ -218,17 +181,6 @@ export const CurationQueuePage: React.FC<CurationQueuePageProps> = () => {
 
   return (
     <div id="curation-queue-page" className="flex flex-col w-full min-h-screen bg-[#E7E2D4] pt-14 pb-32">
-      {/* Toast Alert */}
-      {toastMessage && (
-        <div
-          id="curation-toast"
-          className="fixed top-16 right-6 z-50 bg-[#16232E] text-[#FAF8F3] px-4 py-2 border-l-4 border-[#1E5F74] shadow-xl font-mono text-xs flex items-center gap-2 animate-in fade-in slide-in-from-top-2"
-        >
-          <CheckCircle className="text-[#9CD7EF]" size={16} />
-          <span>{toastMessage}</span>
-        </div>
-      )}
-
       {/* 1. Curation Control & Filters Header */}
       <div
         id="curation-header-bar"
@@ -409,8 +361,6 @@ export const CurationQueuePage: React.FC<CurationQueuePageProps> = () => {
           filteredQueue.map((record, index) => {
             const isSelected = selectedIds.has(record.id);
             const isActive = index === activeCardIndex;
-            const isRejectMenuOpen = openRejectMenuId === record.id;
-
             return (
               <article
                 key={record.id}
@@ -723,57 +673,18 @@ export const CurationQueuePage: React.FC<CurationQueuePageProps> = () => {
                   </div>
                 </div>
 
-                {/* Bottom Action & Curator Marginalia Bar */}
-                <div className="bg-[#EDE8DA] px-4 py-2.5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-                  {/* Marginalia input */}
-                  <div className="flex-1 flex items-center gap-2">
-                    <Edit3 size={16} className="text-[#70787C] flex-shrink-0" />
-                    <input
-                      type="text"
-                      value={record.marginalia}
-                      onChange={(e) => handleMarginaliaChange(record.id, e.target.value)}
-                      placeholder="Add curator notes / benthic health classification feedback..."
-                      className="w-full bg-[#FFFFFF] border border-[#16232E]/30 px-3 py-1.5 font-mono text-xs text-[#1D1C13] placeholder:text-[#70787C] focus:outline-none focus:border-[#1E5F74] focus:ring-1 focus:ring-[#1E5F74] shadow-inner"
-                    />
-                  </div>
-
-                  {/* Action CTA Buttons */}
-                  <div className="flex items-center gap-2 self-end md:self-auto relative">
-                    {/* Reject Dropdown */}
-                    <div className="relative inline-block text-left">
-                      <button
-                        id={`btn-reject-${record.id.toLowerCase()}`}
-                        type="button"
-                        onClick={() =>
-                          setOpenRejectMenuId((prev) => (prev === record.id ? null : record.id))
-                        }
-                        className="px-3 py-1.5 bg-[#FFFFFF] border border-[#BA1A1A]/40 text-[#BA1A1A] hover:bg-[#FFDAD6] font-mono text-xs uppercase tracking-wider flex items-center gap-1 shadow-sm transition-colors cursor-pointer"
-                      >
-                        <span>Reject</span>
-                        <ChevronDown size={14} />
-                      </button>
-
-                      {isRejectMenuOpen && (
-                        <div
-                          className="absolute right-0 bottom-full mb-1 w-64 bg-[#FFFFFF] border border-[#16232E] shadow-2xl z-40 font-mono text-xs py-1"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <div className="p-1.5 text-[9px] uppercase font-bold text-[#70787C] bg-[#F9F3E5] px-2.5 border-b border-[#D1CBBF]">
-                            Select Reject Reason
-                          </div>
-                          {REJECT_REASONS.map((reason) => (
-                            <button
-                              key={reason}
-                              type="button"
-                              onClick={() => handleReject(record.id, reason)}
-                              className="w-full text-left px-3 py-1.5 hover:bg-[#FFDAD6] hover:text-[#BA1A1A] text-[#1D1C13] transition-colors cursor-pointer"
-                            >
-                              {reason}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                {/* Action CTA Buttons */}
+                <div className="bg-[#EDE8DA] px-4 py-2.5 flex items-center justify-end gap-3">
+                  <div className="flex items-center gap-2 relative">
+                    <button
+                      id={`btn-reject-${record.id.toLowerCase()}`}
+                      type="button"
+                      onClick={() => handleReject(record.id)}
+                      className="px-3 py-1.5 bg-[#FFFFFF] border border-[#BA1A1A]/40 text-[#BA1A1A] hover:bg-[#FFDAD6] font-mono text-xs uppercase tracking-wider flex items-center gap-1 shadow-sm transition-colors cursor-pointer"
+                    >
+                      <XCircle size={14} />
+                      <span>Reject</span>
+                    </button>
 
                     {/* Approve Button */}
                     <button
@@ -820,42 +731,20 @@ export const CurationQueuePage: React.FC<CurationQueuePageProps> = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Bulk Reject Trigger with Reasons Menu */}
-            <div className="relative inline-block text-left">
-              <button
-                id="btn-batch-reject"
-                type="button"
-                disabled={selectedIds.size === 0}
-                onClick={() => setOpenBatchRejectMenu((prev) => !prev)}
-                className={`px-3 py-1.5 border border-[#F2637A]/40 text-[#F2637A] font-mono text-xs uppercase tracking-wider flex items-center gap-1 shadow-sm transition-colors ${
-                  selectedIds.size === 0
-                    ? 'opacity-40 cursor-not-allowed'
-                    : 'hover:bg-[#BA1A1A]/20 cursor-pointer'
-                }`}
-              >
-                <XCircle size={14} />
-                <span>Reject Selected</span>
-                <ChevronDown size={14} />
-              </button>
-
-              {openBatchRejectMenu && (
-                <div className="absolute right-0 bottom-full mb-2 w-72 bg-[#16232E] text-white border border-[#3B4854] shadow-2xl z-50 font-mono text-xs p-1">
-                  <div className="p-1.5 text-[9px] uppercase font-bold text-[#BAC8D7] bg-[#20303E]">
-                    Confirm Reject Reason For Batch ({selectedIds.size})
-                  </div>
-                  {REJECT_REASONS.map((reason) => (
-                    <button
-                      key={reason}
-                      type="button"
-                      onClick={() => handleBatchReject(reason)}
-                      className="w-full text-left px-3 py-1.5 hover:bg-[#BA1A1A]/30 text-[#FEF9EB] cursor-pointer"
-                    >
-                      {reason}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <button
+              id="btn-batch-reject"
+              type="button"
+              disabled={selectedIds.size === 0}
+              onClick={handleBatchReject}
+              className={`px-3 py-1.5 border border-[#F2637A]/40 text-[#F2637A] font-mono text-xs uppercase tracking-wider flex items-center gap-1 shadow-sm transition-colors ${
+                selectedIds.size === 0
+                  ? 'opacity-40 cursor-not-allowed'
+                  : 'hover:bg-[#BA1A1A]/20 cursor-pointer'
+              }`}
+            >
+              <XCircle size={14} />
+              <span>Reject Selected</span>
+            </button>
 
             {/* Bulk Approve Trigger */}
             <button
@@ -1019,7 +908,7 @@ export const CurationQueuePage: React.FC<CurationQueuePageProps> = () => {
             {/* Modal Footer */}
             <div className="bg-[#FAF8F3] px-4 py-2 border-t border-[#D1CBBF] flex items-center justify-between text-xs font-mono">
               <span className="text-[#40484C]">
-                Station {expandedRecord.stationId} // {expandedRecord.stationSector} // Nominal Depth: {expandedRecord.nominalDepth}
+                Station {expandedRecord.stationId} {'//'} {expandedRecord.stationSector} {'//'} Nominal Depth: {expandedRecord.nominalDepth}
               </span>
               <div className="flex items-center gap-3">
                 <button

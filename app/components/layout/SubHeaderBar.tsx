@@ -22,22 +22,6 @@ export const SubHeaderBar: React.FC<SubHeaderBarProps> = ({
           >
             Reef Health Map
           </h1>
-          <span
-            id="sector-badge"
-            className="font-mono text-[10px] uppercase tracking-widest text-[#53606D] bg-[#F3EEDF] px-2 py-0.5 border border-[#C0C8CC]"
-          >
-            GBR CAIRNS TRANSECT SECTOR-IV
-          </span>
-        </div>
-
-        <div className="h-4 w-[1px] bg-[#C0C8CC] hidden sm:block" />
-
-        {/* Survey Protocol Identification */}
-        <div className="flex items-center gap-2 font-mono text-[10px] text-[#53606D]">
-          <span className="w-1.5 h-1.5 bg-[#00475A]" />
-          <span>
-            SURVEY ARCHIVE // <strong className="text-[#1D1C13] font-semibold">RESNET-50 BENTHIC ANALYSIS</strong>
-          </span>
         </div>
       </div>
 

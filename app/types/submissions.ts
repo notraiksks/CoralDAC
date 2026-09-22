@@ -18,13 +18,11 @@ export interface SubmissionRecord {
   uploadedTimeUtc: string;
   stationId: string;
   stationName: string;
-  transectSector: string;
   coordinates: string;
   depth: string;
   cameraSettings?: string;
   diver?: string;
   status: SubmissionStatus;
-  statusDetail: string;
   provisionalCounts: BenthicClassCounts;
   ratios: {
     lc: number;
@@ -33,10 +31,4 @@ export interface SubmissionRecord {
     dca: number;
   };
   confidence: number;
-  rejectReason?: {
-    recordCode: string;
-    reviewer: string;
-    note: string;
-    codeDetail: string;
-  };
 }
