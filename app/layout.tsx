@@ -2,30 +2,19 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Reef Health Map',
-  description:
-    'Scientific benthic survey and archival specimen health mapping interface with ResNet50 classification diagnostics.',
-  openGraph: {
-    title: 'Reef Health Map',
-    description:
-      'Scientific benthic survey and archival specimen health mapping interface with ResNet50 classification diagnostics.',
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-  },
+  title: 'Coral Reef Bleaching Classifier',
+  description: 'Upload coral quadrat photos, classify bleaching with YOLOv8 + ResNet50, and explore results on an interactive map of the Philippines.',
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body className="bg-[#E7E2D4] text-[#1D1C13] antialiased overflow-hidden select-none">
-        {children}
-      </body>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet" />
+      </head>
+      <body className="text-[#1f2430] antialiased">{children}</body>
     </html>
   );
 }
