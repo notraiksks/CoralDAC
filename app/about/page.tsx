@@ -88,7 +88,7 @@ export default function AboutPage() {
               share of colonies that are bleached or dead, on a fixed 0–100 % scale. Counts scale to the highest station shown.
             </p>
             <p>
-              Each station glows over a ~300 m footprint only, and overlapping glows show the higher value, never a sum. The optional Motion is
+              Each station glows over a ~300 m footprint only, and overlapping glows show the higher value, never a sum. Motion (on by default, switch it off under Layers) is
               decoration and never raises a value.
             </p>
           </CardContent>

@@ -43,10 +43,10 @@ export function MapExplorer() {
   const selectedId = params.get("station")
 
   const [target, setTarget] = React.useState<HeatTarget>("SHARE")
-  const [animate, setAnimate] = React.useState(false)
+  const [animate, setAnimate] = React.useState(true)
   const [metric, setMetric] = React.useState<HeatMetric>("perQuadrat")
   const [heatOn, setHeatOn] = React.useState(true)
-  const [basemap, setBasemap] = React.useState<Basemap>("map")
+  const [basemap, setBasemap] = React.useState<Basemap>("satellite")
   const mapRef = React.useRef<L.Map | null>(null)
 
   const summaries = React.useMemo(() => summarizeStations(STATIONS, images), [images])
