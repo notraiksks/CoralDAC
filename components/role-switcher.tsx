@@ -35,11 +35,11 @@ export function RoleSwitcher() {
             <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
               <Icon className="size-4" />
             </span>
-            <span className="grid flex-1 text-left leading-tight">
+            <span className="grid flex-1 text-left leading-tight group-data-[collapsible=icon]:hidden">
               <span className="font-medium">{ROLE_META[role].label}</span>
               <span className="text-xs text-muted-foreground">Demo role</span>
             </span>
-            <ChevronsUpDown className="ml-auto size-4 text-muted-foreground" />
+            <ChevronsUpDown className="ml-auto size-4 text-muted-foreground group-data-[collapsible=icon]:hidden" />
           </DropdownMenuTrigger>
           <DropdownMenuContent side="top" align="start" className="w-64">
             <DropdownMenuGroup>

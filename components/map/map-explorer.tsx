@@ -7,7 +7,7 @@ import Image from "next/image"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useTheme } from "next-themes"
 import type L from "leaflet"
-import { ArrowRight, Layers as LayersIcon, Maximize, Minus, Plus, Search, X } from "lucide-react"
+import { ArrowRight, ChevronDown, Layers as LayersIcon, Maximize, Minus, Plus, Search, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -86,7 +86,7 @@ export function MapExplorer() {
   )
 
   return (
-    <div className="relative h-[calc(100svh-3rem)] w-full overflow-hidden">
+    <div className="relative isolate h-[calc(100svh-3rem)] w-full overflow-hidden">
       <ReefMap
         summaries={summaries}
         target={target}
@@ -116,7 +116,7 @@ export function MapExplorer() {
             </SheetContent>
           </Sheet>
         ) : (
-          <Card className="pointer-events-auto w-full gap-0 p-4 shadow-lg">{controls}</Card>
+          <LayersCard>{controls}</LayersCard>
         )}
       </div>
 
@@ -135,6 +135,45 @@ export function MapExplorer() {
 
       {selected && <StationPanel s={selected} metric={metric} onClose={() => select(null)} />}
     </div>
+  )
+}
+
+const LAYERS_OPEN_KEY = "coraldac-layers-open"
+
+/** Floating layers card that folds down to its title bar (state remembered in this browser). */
+function LayersCard({ children }: { children: React.ReactNode }) {
+  const [open, setOpen] = React.useState(true)
+  React.useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (localStorage.getItem(LAYERS_OPEN_KEY) === "0") setOpen(false)
+    } catch {}
+  }, [])
+  const toggle = () =>
+    setOpen((o) => {
+      try {
+        localStorage.setItem(LAYERS_OPEN_KEY, o ? "0" : "1")
+      } catch {}
+      return !o
+    })
+  return (
+    <Card className={cn("pointer-events-auto gap-0 p-0 shadow-lg", open ? "w-full" : "w-auto")}>
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={open}
+        aria-controls="map-layers"
+        className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-left text-sm font-medium hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+      >
+        <LayersIcon className="size-4 text-muted-foreground" />
+        <span className="flex-1">Layers</span>
+        <ChevronDown className={cn("size-4 text-muted-foreground transition-transform", open && "rotate-180")} />
+        <span className="sr-only">{open ? "Collapse" : "Expand"}</span>
+      </button>
+      <div id="map-layers" hidden={!open} className="border-t px-4 pt-3 pb-4">
+        {children}
+      </div>
+    </Card>
   )
 }
 
