@@ -21,7 +21,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ClassBreakdown, Stat } from "@/components/class-ui"
 import { STATIONS } from "@/lib/archive"
 import { HEALTH_CLASSES, impactedShare } from "@/lib/classes"
-import { fmt1, HEAT_TARGETS, heatValue, summarizeStations, type HeatMetric, type HeatTarget, type StationSummary } from "@/lib/stats"
+import { fmt1, formatHeat, HEAT_TARGETS, heatMax, summarizeStations, type HeatMetric, type HeatTarget, type StationSummary } from "@/lib/stats"
 import { useStore } from "@/lib/store"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -42,8 +42,8 @@ export function MapExplorer() {
   const params = useSearchParams()
   const selectedId = params.get("station")
 
-  const [target, setTarget] = React.useState<HeatTarget>("NOTLIVE")
-  const [animate, setAnimate] = React.useState(true)
+  const [target, setTarget] = React.useState<HeatTarget>("SHARE")
+  const [animate, setAnimate] = React.useState(false)
   const [metric, setMetric] = React.useState<HeatMetric>("perQuadrat")
   const [heatOn, setHeatOn] = React.useState(true)
   const [basemap, setBasemap] = React.useState<Basemap>("map")
@@ -212,10 +212,9 @@ function LayerControls({
   setBasemap: (b: Basemap) => void
   summaries: StationSummary[]
 }) {
-  const values = summaries.map((s) => heatValue(s, target, metric))
-  const max = Math.max(0, ...values)
-  const unit = metric === "total" ? "colonies" : "per quadrat"
-  const fmt = (v: number) => (metric === "total" ? String(Math.round(v)) : fmt1(v))
+  const isShare = target === "SHARE"
+  const max = heatMax(summaries, target, metric)
+  const unit = isShare ? "of colonies" : metric === "total" ? "colonies" : "per quadrat"
 
   return (
     <div className="space-y-4">
@@ -243,9 +242,9 @@ function LayerControls({
         <div className={cn("space-y-1 pt-1 transition-opacity", !heatOn && "opacity-40")}>
           <div className="h-2.5 rounded-full" style={{ background: INFERNO_CSS }} aria-hidden="true" />
           <div className="tabular flex justify-between text-xs text-muted-foreground">
-            <span>0</span>
+            <span>{formatHeat(0, target, metric)}</span>
             <span>{unit}</span>
-            <span>{fmt(max)}</span>
+            <span>{formatHeat(max, target, metric)}</span>
           </div>
         </div>
       </div>
@@ -257,6 +256,7 @@ function LayerControls({
           size="sm"
           spacing={0}
           className="w-full"
+          disabled={isShare}
           value={[metric]}
           onValueChange={(v) => v[0] && setMetric(v[0] as HeatMetric)}
         >
@@ -268,7 +268,11 @@ function LayerControls({
           </ToggleGroupItem>
         </ToggleGroup>
         <p className="text-xs text-muted-foreground">
-          {metric === "perQuadrat" ? "Mean colonies per photo: fair across stations." : "All colonies at the station, summed."}
+          {isShare
+            ? "A rate needs no weight: scale is fixed at 0–100 %."
+            : metric === "perQuadrat"
+              ? "Mean colonies per photo: fair across stations."
+              : "All colonies at the station, summed."}
         </p>
       </div>
 
@@ -277,7 +281,7 @@ function LayerControls({
           <TooltipTrigger render={<label className="flex items-center gap-2 text-sm" />}>
             <Switch checked={animate} onCheckedChange={setAnimate} disabled={!heatOn} /> Motion
           </TooltipTrigger>
-          <TooltipContent className="max-w-56">A slow shimmer for a live feel. It never changes the values; turn it off for an exact still.</TooltipContent>
+          <TooltipContent className="max-w-56">A slow, decorative drift. It never raises a value; leave it off for figures.</TooltipContent>
         </Tooltip>
         <ToggleGroup variant="outline" size="sm" spacing={0} value={[basemap]} onValueChange={(v) => v[0] && setBasemap(v[0] as Basemap)}>
           <ToggleGroupItem value="map">Map</ToggleGroupItem>

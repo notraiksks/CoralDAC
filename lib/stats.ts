@@ -1,4 +1,4 @@
-import { addCounts, countClasses, emptyCounts, HEALTH_CLASSES, totalOf } from "./classes"
+import { addCounts, countClasses, emptyCounts, HEALTH_CLASSES, impactedShare, totalOf } from "./classes"
 import type { ClassCounts, HealthClass, ReefImage, Station } from "./types"
 
 export interface StationSummary {
@@ -42,18 +42,35 @@ export const pct = (part: number, whole: number, digits = 0) =>
 
 export const fmt1 = (n: number) => (Math.round(n * 10) / 10).toLocaleString(undefined, { maximumFractionDigits: 1 })
 
-/** What the thermal heatmap measures: one health class, or all not-live colonies (PB + DC + DCA). */
-export type HeatTarget = "NOTLIVE" | HealthClass
+/**
+ * What the thermal heatmap measures: the share of colonies that are not live (a rate, 0..100 %), or a count of
+ * colonies (all not-live, or one class) weighted per quadrat or as a station total.
+ */
+export type HeatTarget = "SHARE" | "NOTLIVE" | HealthClass
 
 export const HEAT_TARGETS: { id: HeatTarget; label: string; hint: string; classes: HealthClass[] }[] = [
-  { id: "NOTLIVE", label: "Not live", hint: "Partially bleached + dead colonies", classes: ["PB", "DC", "DCA"] },
+  { id: "SHARE", label: "% not live", hint: "Share of colonies that are bleached or dead", classes: [] },
+  { id: "NOTLIVE", label: "Not live (count)", hint: "Partially bleached + dead colonies", classes: ["PB", "DC", "DCA"] },
   { id: "LC", label: "Live coral", hint: "Living, normally pigmented colonies", classes: ["LC"] },
   { id: "PB", label: "Partially bleached", hint: "Colonies with pale or white tissue", classes: ["PB"] },
   { id: "DC", label: "Dead coral", hint: "Recently dead skeletons", classes: ["DC"] },
   { id: "DCA", label: "Dead coral with algae", hint: "Dead skeletons overgrown by algae", classes: ["DCA"] },
 ]
 
+/** SHARE is a fraction 0..1 (metric does not apply); the others are colony counts. */
 export function heatValue(s: StationSummary, target: HeatTarget, metric: HeatMetric) {
+  if (target === "SHARE") return impactedShare(s.totals)
   const classes = HEAT_TARGETS.find((t) => t.id === target)!.classes
   return classes.reduce((a, k) => a + (metric === "total" ? s.totals[k] : s.perQuadrat[k]), 0)
+}
+
+/** Legend maximum: rates use the fixed 0..100 % scale, counts scale to the highest station shown. */
+export function heatMax(summaries: StationSummary[], target: HeatTarget, metric: HeatMetric) {
+  if (target === "SHARE") return 1
+  return Math.max(1e-9, ...summaries.map((s) => heatValue(s, target, metric)))
+}
+
+export function formatHeat(v: number, target: HeatTarget, metric: HeatMetric) {
+  if (target === "SHARE") return `${Math.round(v * 100)}%`
+  return metric === "total" ? String(Math.round(v)) : fmt1(v)
 }

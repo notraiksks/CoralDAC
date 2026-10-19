@@ -1,13 +1,15 @@
 "use client"
 
 /**
- * Thermal heat layer: one quantity per station rendered as a heat field and coloured with the Inferno ramp.
+ * Thermal heat layer, drawn on the GPU (WebGL fragment shader).
  *
- * 1. On every view change, a scalar field is built on a low-resolution grid: a Gaussian per station, weighted by
- *    value / max (so the hottest station reaches the top of the ramp).
- * 2. Every animation frame the field is resampled through a slowly drifting noise warp ("shimmer") and coloured.
- *    The warp only moves heat by a few pixels and modulates brightness by a few percent; values are not changed
- *    and the static frame (reduced motion / motion off) is the exact field.
+ * - Each station is a disc (flat core at the exact value, soft edge) whose size is a fixed geographic footprint (FOOTPRINT_M, never smaller than
+ *   MIN_RADIUS_PX on screen), so the map does not suggest data between stations.
+ * - Overlapping discs combine by MAX, never by sum: a cluster of low stations stays low.
+ * - Colour comes from the same Inferno lookup table as the legend.
+ * - Optional motion: the sampling position is warped by smooth simplex noise that drifts with time, and the
+ *   brightness breathes between 90 % and 100 %. Motion can only lower a value, never raise it above the data.
+ * Without WebGL a static CPU rendering of the same field is used.
  */
 import * as React from "react"
 import L from "leaflet"
@@ -17,31 +19,134 @@ import { INFERNO_LUT } from "@/lib/inferno"
 export interface HeatPoint {
   lat: number
   lng: number
-  /** 0..1, already normalised to the largest value shown */
+  /** 0..1 on the legend scale */
   w: number
 }
 
-/* ---------- smooth value noise ---------- */
-function hash(x: number, y: number) {
-  let h = (x * 374761393 + y * 668265263) | 0
-  h = Math.imul(h ^ (h >>> 13), 1274126177)
-  return ((h ^ (h >>> 16)) >>> 0) / 4294967295
-}
-function noise(x: number, y: number) {
-  const xi = Math.floor(x)
-  const yi = Math.floor(y)
-  const xf = x - xi
-  const yf = y - yi
-  const u = xf * xf * (3 - 2 * xf)
-  const v = yf * yf * (3 - 2 * yf)
-  const a = hash(xi, yi)
-  const b = hash(xi + 1, yi)
-  const c = hash(xi, yi + 1)
-  const d = hash(xi + 1, yi + 1)
-  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v // 0..1
+const FOOTPRINT_M = 300
+const MIN_RADIUS_PX = 62
+const MAX_POINTS = 64
+
+const VERT = `
+attribute vec2 a_pos;
+void main() { gl_Position = vec4(a_pos, 0.0, 1.0); }
+`
+
+const FRAG = `
+precision highp float;
+uniform vec2 u_res;        // canvas size in CSS px
+uniform float u_dpr;
+uniform float u_time;
+uniform float u_motion;    // 0 = still, 1 = moving
+uniform float u_opacity;
+uniform float u_coldFade;
+uniform vec4 u_pts[${MAX_POINTS}]; // x, y (CSS px, top-left origin), radius px, weight 0..1
+uniform int u_n;
+uniform sampler2D u_lut;
+
+// 2D simplex noise, after Ashima Arts / Ian McEwan (MIT licence)
+vec3 permute(vec3 x) { return mod(((x * 34.0) + 1.0) * x, 289.0); }
+float snoise(vec2 v) {
+  const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);
+  vec2 i = floor(v + dot(v, C.yy));
+  vec2 x0 = v - i + dot(i, C.xx);
+  vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+  vec4 x12 = x0.xyxy + C.xxzz;
+  x12.xy -= i1;
+  i = mod(i, 289.0);
+  vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0));
+  vec3 m = max(0.5 - vec3(dot(x0, x0), dot(x12.xy, x12.xy), dot(x12.zw, x12.zw)), 0.0);
+  m = m * m;
+  m = m * m;
+  vec3 x = 2.0 * fract(p * C.www) - 1.0;
+  vec3 h = abs(x) - 0.5;
+  vec3 ox = floor(x + 0.5);
+  vec3 a0 = x - ox;
+  m *= 1.79284291400159 - 0.85373472095314 * (a0 * a0 + h * h);
+  vec3 g;
+  g.x = a0.x * x0.x + h.x * x0.y;
+  g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+  return 130.0 * dot(m, g); // -1..1
 }
 
-const SCALE = 0.4 // grid resolution relative to screen pixels
+void main() {
+  vec2 p = vec2(gl_FragCoord.x, u_res.y * u_dpr - gl_FragCoord.y) / u_dpr;
+  float t = u_time;
+  float f = 0.0;
+  for (int i = 0; i < ${MAX_POINTS}; i++) {
+    if (i >= u_n) break;
+    vec4 s = u_pts[i];
+    vec2 q = p - s.xy;
+    if (u_motion > 0.5) {
+      // slow, smooth swirl: displacement up to ~18 % of the disc radius
+      vec2 nq = q / s.z * 0.9 + float(i) * 13.7;
+      vec2 warp = vec2(snoise(nq + vec2(t * 0.11, -t * 0.08)), snoise(nq + vec2(-t * 0.09, t * 0.12) + 31.4));
+      q += warp * s.z * 0.18;
+    }
+    float d = length(q) / s.z;
+    f = max(f, s.w * (1.0 - smoothstep(0.35, 1.0, d))); // flat core at the exact value, soft edge; MAX, not sum
+  }
+  if (u_motion > 0.5) f *= 0.9 + 0.1 * (0.5 + 0.5 * snoise(p * 0.008 + vec2(t * 0.2, t * 0.15)));
+  f = clamp(f, 0.0, 1.0);
+  if (f < 0.012) discard;
+  vec3 col = texture2D(u_lut, vec2((f * 255.0 + 0.5) / 256.0, 0.5)).rgb;
+  float a = u_opacity * min(1.0, pow(f / 0.5, u_coldFade));
+  gl_FragColor = vec4(col * a, a); // premultiplied alpha
+}
+`
+
+interface GL {
+  gl: WebGLRenderingContext
+  loc: Record<string, WebGLUniformLocation | null>
+}
+
+function initGl(canvas: HTMLCanvasElement): GL | null {
+  const gl = canvas.getContext("webgl", { premultipliedAlpha: true, antialias: false, alpha: true })
+  if (!gl) return null
+  const compile = (type: number, src: string) => {
+    const sh = gl.createShader(type)!
+    gl.shaderSource(sh, src)
+    gl.compileShader(sh)
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+      console.warn("[thermal] shader:", gl.getShaderInfoLog(sh))
+      return null
+    }
+    return sh
+  }
+  const vs = compile(gl.VERTEX_SHADER, VERT)
+  const fs = compile(gl.FRAGMENT_SHADER, FRAG)
+  if (!vs || !fs) return null
+  const prog = gl.createProgram()!
+  gl.attachShader(prog, vs)
+  gl.attachShader(prog, fs)
+  gl.linkProgram(prog)
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return null
+  gl.useProgram(prog)
+
+  const buf = gl.createBuffer()
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf)
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW)
+  const aPos = gl.getAttribLocation(prog, "a_pos")
+  gl.enableVertexAttribArray(aPos)
+  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0)
+
+  // Inferno lookup table as a 256 x 1 texture (same table as the legend)
+  const tex = gl.createTexture()
+  gl.bindTexture(gl.TEXTURE_2D, tex)
+  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1)
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, 256, 1, 0, gl.RGB, gl.UNSIGNED_BYTE, new Uint8Array(INFERNO_LUT))
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+
+  const names = ["u_res", "u_dpr", "u_time", "u_motion", "u_opacity", "u_coldFade", "u_pts", "u_n", "u_lut"]
+  const loc = Object.fromEntries(names.map((n) => [n, gl.getUniformLocation(prog, n)]))
+  gl.uniform1i(loc.u_lut, 0)
+  return { gl, loc }
+}
+
+type Disc = readonly [x: number, y: number, r: number, w: number]
 
 export function ThermalLayer({
   points,
@@ -59,9 +164,8 @@ export function ThermalLayer({
 }) {
   const map = useMap()
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null)
-  const field = React.useRef<{ data: Float32Array; w: number; h: number } | null>(null)
-  const frame = React.useRef<ImageData | null>(null)
-  const raf = React.useRef<number | null>(null)
+  const glRef = React.useRef<GL | null>(null)
+  const [hasGl, setHasGl] = React.useState(false)
   const zooming = React.useRef(false)
 
   React.useEffect(() => {
@@ -71,102 +175,16 @@ export function ThermalLayer({
     const canvas = L.DomUtil.create("canvas", "", pane) as HTMLCanvasElement
     canvas.style.position = "absolute"
     canvas.style.transition = "opacity .25s"
-    canvas.style.imageRendering = "auto"
     canvasRef.current = canvas
+    glRef.current = initGl(canvas)
+    setHasGl(glRef.current != null)
     return () => {
+      glRef.current?.gl.getExtension("WEBGL_lose_context")?.loseContext()
+      glRef.current = null
       canvas.remove()
       canvasRef.current = null
     }
   }, [map])
-
-  /** rebuild the scalar field for the current view */
-  const build = React.useCallback(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const size = map.getSize()
-    const w = Math.ceil(size.x * SCALE)
-    const h = Math.ceil(size.y * SCALE)
-    canvas.width = w
-    canvas.height = h
-    canvas.style.width = `${size.x}px`
-    canvas.style.height = `${size.y}px`
-    L.DomUtil.setPosition(canvas, map.containerPointToLayerPoint([0, 0]))
-    const data = new Float32Array(w * h)
-    const lat = map.getCenter().lat
-    const metersPerPx = (156543.03392 * Math.cos((lat * Math.PI) / 180)) / 2 ** map.getZoom()
-    const rPx = Math.min(260, Math.max(80, 2000 / metersPerPx))
-    for (const p of points) {
-      if (p.w <= 0) continue
-      const c = map.latLngToContainerPoint([p.lat, p.lng])
-      const r = rPx * (0.6 + 0.4 * Math.sqrt(p.w)) * SCALE
-      const cx = c.x * SCALE
-      const cy = c.y * SCALE
-      const s2 = 2 * (r / 2.6) ** 2
-      const x0 = Math.max(0, Math.floor(cx - r))
-      const x1 = Math.min(w - 1, Math.ceil(cx + r))
-      const y0 = Math.max(0, Math.floor(cy - r))
-      const y1 = Math.min(h - 1, Math.ceil(cy + r))
-      for (let y = y0; y <= y1; y++)
-        for (let x = x0; x <= x1; x++) {
-          const d2 = (x - cx) ** 2 + (y - cy) ** 2
-          if (d2 <= r * r) data[y * w + x] += p.w * Math.exp(-d2 / s2)
-        }
-    }
-    field.current = { data, w, h }
-    frame.current = canvas.getContext("2d")!.createImageData(w, h)
-  }, [map, points])
-
-  /** colour the field into the canvas; t = seconds, or null for the exact static field */
-  const paint = React.useCallback(
-    (t: number | null) => {
-      const canvas = canvasRef.current
-      const f = field.current
-      const img = frame.current
-      if (!canvas || !f || !img) return
-      const ctx = canvas.getContext("2d")!
-      const out = img.data
-      out.fill(0)
-      if (visible) {
-        const { data, w, h } = f
-        for (let y = 0; y < h; y++) {
-          for (let x = 0; x < w; x++) {
-            let sx = x
-            let sy = y
-            let gain = 1
-            if (t != null && data[y * w + x] > 0.004) {
-              // two drifting octaves: a slow swirl that displaces heat, and a faster flicker of brightness
-              const n1 = noise(x * 0.035 + t * 0.12, y * 0.035 - t * 0.09)
-              const n2 = noise(x * 0.035 - t * 0.1 + 31.7, y * 0.035 + t * 0.07 + 11.3)
-              sx = Math.min(w - 1, Math.max(0, x + (n1 - 0.5) * 11))
-              sy = Math.min(h - 1, Math.max(0, y + (n2 - 0.5) * 11))
-              gain = 0.88 + 0.24 * noise(x * 0.09 + t * 0.35, y * 0.09 + t * 0.25)
-            }
-            // bilinear sample of the field
-            const xi = Math.floor(sx)
-            const yi = Math.floor(sy)
-            const fx = sx - xi
-            const fy = sy - yi
-            const i = yi * w + xi
-            const a = data[i]
-            const b = xi + 1 < w ? data[i + 1] : a
-            const c = yi + 1 < h ? data[i + w] : a
-            const d = xi + 1 < w && yi + 1 < h ? data[i + w + 1] : a
-            const v = Math.min(1, (a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy) * gain)
-            if (v < 0.01) continue
-            const k = Math.round(v * 255) * 3
-            const o = (y * w + x) * 4
-            out[o] = INFERNO_LUT[k]
-            out[o + 1] = INFERNO_LUT[k + 1]
-            out[o + 2] = INFERNO_LUT[k + 2]
-            // fade the cold end out so the basemap shows through; hot cores are nearly opaque
-            out[o + 3] = 255 * opacity * Math.min(1, Math.pow(v / 0.5, coldFade))
-          }
-        }
-      }
-      ctx.putImageData(img, 0, 0)
-    },
-    [visible, opacity, coldFade]
-  )
 
   const reducedMotion = React.useSyncExternalStore(
     (cb) => {
@@ -177,32 +195,79 @@ export function ThermalLayer({
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     () => true
   )
-  const moving = animate && visible && !reducedMotion
+  const moving = animate && visible && !reducedMotion && hasGl
 
-  // animation loop (~24 fps is plenty for a slow shimmer)
+  /** screen-space discs for the current view */
+  const discs = React.useCallback((): Disc[] => {
+    const lat = map.getCenter().lat
+    const metersPerPx = (156543.03392 * Math.cos((lat * Math.PI) / 180)) / 2 ** map.getZoom()
+    const r = Math.max(MIN_RADIUS_PX, FOOTPRINT_M / metersPerPx)
+    return points
+      .filter((p) => p.w > 0)
+      .slice(0, MAX_POINTS)
+      .map((p) => {
+        const c = map.latLngToContainerPoint([p.lat, p.lng])
+        return [c.x, c.y, r, p.w] as const
+      })
+  }, [map, points])
+
+  const render = React.useCallback(
+    (time: number) => {
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const size = map.getSize()
+      const dpr = Math.min(2, window.devicePixelRatio || 1)
+      const w = Math.round(size.x * dpr)
+      const h = Math.round(size.y * dpr)
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w
+        canvas.height = h
+        canvas.style.width = `${size.x}px`
+        canvas.style.height = `${size.y}px`
+      }
+      L.DomUtil.setPosition(canvas, map.containerPointToLayerPoint([0, 0]))
+      const d = visible ? discs() : []
+      const g = glRef.current
+      if (!g) {
+        renderCpu(canvas, d, size.x, size.y, opacity, coldFade)
+        return
+      }
+      const { gl, loc } = g
+      gl.viewport(0, 0, w, h)
+      gl.clearColor(0, 0, 0, 0)
+      gl.clear(gl.COLOR_BUFFER_BIT)
+      if (!d.length) return
+      const flat = new Float32Array(MAX_POINTS * 4)
+      d.forEach((p, i) => flat.set(p, i * 4))
+      gl.uniform2f(loc.u_res, size.x, size.y)
+      gl.uniform1f(loc.u_dpr, dpr)
+      gl.uniform1f(loc.u_time, time)
+      gl.uniform1f(loc.u_motion, moving ? 1 : 0)
+      gl.uniform1f(loc.u_opacity, opacity)
+      gl.uniform1f(loc.u_coldFade, coldFade)
+      gl.uniform4fv(loc.u_pts, flat)
+      gl.uniform1i(loc.u_n, d.length)
+      gl.drawArrays(gl.TRIANGLES, 0, 6)
+    },
+    [map, discs, visible, moving, opacity, coldFade]
+  )
+
+  // continuous loop while moving (the GPU does the work), a single draw otherwise
   React.useEffect(() => {
-    build()
-    paint(moving ? performance.now() / 1000 : null)
+    render(performance.now() / 1000)
     if (!moving) return
-    let last = 0
+    let id = 0
     const loop = (now: number) => {
-      raf.current = requestAnimationFrame(loop)
-      if (zooming.current || now - last < 42) return
-      last = now
-      paint(now / 1000)
+      id = requestAnimationFrame(loop)
+      if (!zooming.current) render(now / 1000)
     }
-    raf.current = requestAnimationFrame(loop)
-    return () => {
-      if (raf.current != null) cancelAnimationFrame(raf.current)
-    }
-  }, [build, paint, moving])
+    id = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(id)
+  }, [render, moving])
 
-  const redraw = () => {
-    build()
-    paint(moving ? performance.now() / 1000 : null)
-  }
+  const redraw = () => render(performance.now() / 1000)
   useMapEvents({
-    moveend: redraw,
+    move: redraw,
     resize: redraw,
     zoomstart: () => {
       zooming.current = true
@@ -215,4 +280,39 @@ export function ThermalLayer({
     },
   })
   return null
+}
+
+/** Static fallback without WebGL: the same field (max of discs, Inferno), no motion. */
+function renderCpu(canvas: HTMLCanvasElement, discs: Disc[], cssW: number, cssH: number, opacity: number, coldFade: number) {
+  const ctx = canvas.getContext("2d")
+  if (!ctx) return
+  const scale = 0.5 // half resolution is enough for a smooth field
+  const w = Math.ceil(cssW * scale)
+  const h = Math.ceil(cssH * scale)
+  const img = ctx.createImageData(w, h)
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      let f = 0
+      for (const [cx, cy, r, wt] of discs) {
+        const d = Math.sqrt((x / scale - cx) ** 2 + (y / scale - cy) ** 2) / r
+        if (d < 1) {
+          const u = Math.min(1, Math.max(0, (d - 0.35) / 0.65))
+          f = Math.max(f, wt * (1 - u * u * (3 - 2 * u)))
+        }
+      }
+      if (f < 0.012) continue
+      const k = Math.round(Math.min(1, f) * 255) * 3
+      const o = (y * w + x) * 4
+      img.data[o] = INFERNO_LUT[k]
+      img.data[o + 1] = INFERNO_LUT[k + 1]
+      img.data[o + 2] = INFERNO_LUT[k + 2]
+      img.data[o + 3] = 255 * opacity * Math.min(1, Math.pow(f / 0.5, coldFade))
+    }
+  const off = document.createElement("canvas")
+  off.width = w
+  off.height = h
+  off.getContext("2d")!.putImageData(img, 0, 0)
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  ctx.imageSmoothingEnabled = true
+  ctx.drawImage(off, 0, 0, canvas.width, canvas.height)
 }

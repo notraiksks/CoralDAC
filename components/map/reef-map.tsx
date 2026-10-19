@@ -2,9 +2,8 @@
 
 /**
  * Leaflet map of the monitoring stations.
- * - Heatmap: a thermal (Inferno) field of one quantity per station (a health class or all not-live colonies),
- *   weighted by the chosen metric (colonies per quadrat, or the raw station total) and scaled to the largest value
- *   shown. It shimmers slowly for a live, weather-map feel; the motion never changes values.
+ * - Heatmap: a thermal (Inferno) disc per station on the GPU (thermal-layer.tsx): the % of colonies not live, or a
+ *   count (per quadrat or station total). Discs have a fixed ~300 m footprint and combine by max, not sum.
  * - Markers: a donut of the full class mix per station. Markers that would overlap get a schematic pixel offset
  *   with a leader line to the GPS point; stored coordinates and counts are never changed.
  */
@@ -14,7 +13,7 @@ import "leaflet/dist/leaflet.css"
 import { GeoJSON, MapContainer, Marker, Pane, TileLayer, Tooltip, useMap, useMapEvents } from "react-leaflet"
 import land from "@/lib/data/sea-land.json"
 import { CLASS_META, HEALTH_CLASSES } from "@/lib/classes"
-import { fmt1, heatValue, type HeatMetric, type HeatTarget, type StationSummary } from "@/lib/stats"
+import { fmt1, formatHeat, heatMax, heatValue, type HeatMetric, type HeatTarget, type StationSummary } from "@/lib/stats"
 import { ThermalLayer } from "./thermal-layer"
 
 export type Basemap = "map" | "satellite"
@@ -48,8 +47,7 @@ function donutSvg(s: StationSummary, size: number, selected: boolean) {
 
 function stationIcon(s: StationSummary, target: HeatTarget, metric: HeatMetric, offset: [number, number], selected: boolean) {
   const size = selected ? 52 : 44
-  const value = heatValue(s, target, metric)
-  const label = metric === "total" ? String(Math.round(value)) : fmt1(value)
+  const label = formatHeat(heatValue(s, target, metric), target, metric)
   const [dx, dy] = offset
   const html = `
     <div style="position:relative;width:0;height:0">
@@ -204,9 +202,8 @@ export default function ReefMap({ summaries, target, metric, heatOn, animate, ba
   )
 
   const points = React.useMemo(() => {
-    const vals = summaries.map((s) => heatValue(s, target, metric))
-    const max = Math.max(1e-9, ...vals)
-    return summaries.map((s, i) => ({ lat: s.station.lat, lng: s.station.lng, w: vals[i] / max }))
+    const max = heatMax(summaries, target, metric)
+    return summaries.map((s) => ({ lat: s.station.lat, lng: s.station.lng, w: s.images ? heatValue(s, target, metric) / max : 0 }))
   }, [summaries, target, metric])
 
   return (

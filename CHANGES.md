@@ -1,5 +1,12 @@
 # CoralDAC (web app for the coral detection + health thesis)
 
+## v8.2: honest, GPU-rendered heatmap (2026-10-19)
+- WebGL fragment shader (`components/map/thermal-layer.tsx`): smooth 60 fps motion from drifting simplex noise; static
+  CPU fallback without WebGL. Motion is OFF by default and can only lower a value (brightness 90-100 %).
+- Overlapping stations combine by MAX, not sum (a cluster of low stations no longer looks hot).
+- Fixed ~300 m footprint per station (min 62 px on screen), flat core at the exact value, soft edge.
+- New default heat: "% not live" (share of colonies PB+DC+DCA) on a fixed 0-100 % scale; counts keep a 0..max scale.
+
 ## v8.1: thermal heatmap (2026-10-19)
 - The heatmap shows ONE quantity on a thermal (Inferno) scale: not-live colonies (PB + DC + DCA, default), or one class;
   weight per quadrat (default) or station total. Legend shows 0 .. the hottest station.

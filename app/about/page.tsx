@@ -80,12 +80,16 @@ export default function AboutPage() {
               their station.
             </p>
             <p>
-              <span className="text-foreground">Per quadrat</span> (default) divides a station&apos;s total by its number of photos, so stations surveyed
+              For counts, <span className="text-foreground">Per quadrat</span> (default) divides a station&apos;s total by its number of photos, so stations surveyed
               more often do not look hotter. <span className="text-foreground">Station total</span> shows the plain sum.
             </p>
             <p>
-              The heat shows one quantity at a time (default: not-live colonies) on a thermal scale from dark (none) to pale yellow (the highest
-              station). The slow shimmer is decoration only; switch off Motion for an exact still.
+              The heat shows one quantity at a time on a thermal scale. The default, <span className="text-foreground">% not live</span>, is the
+              share of colonies that are bleached or dead, on a fixed 0–100 % scale. Counts scale to the highest station shown.
+            </p>
+            <p>
+              Each station glows over a ~300 m footprint only, and overlapping glows show the higher value, never a sum. The optional Motion is
+              decoration and never raises a value.
             </p>
           </CardContent>
         </Card>
