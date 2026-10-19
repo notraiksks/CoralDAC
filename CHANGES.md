@@ -1,5 +1,13 @@
 # CoralDAC (web app for the coral detection + health thesis)
 
+## v8.1: thermal heatmap (2026-10-19)
+- The heatmap shows ONE quantity on a thermal (Inferno) scale: not-live colonies (PB + DC + DCA, default), or one class;
+  weight per quadrat (default) or station total. Legend shows 0 .. the hottest station.
+- Gentle "shimmer": a slow noise warp (a few px) and +/-12 % brightness flicker, ~24 fps, for a live weather-map feel.
+  Values never change; it stops with Motion off or the OS "reduce motion" setting (`components/map/thermal-layer.tsx`).
+- Basemaps: Esri Light/Dark Gray Canvas (the Ocean basemap has no data around Mindoro). Shared links (?station=) open on
+  the station. Old single-page screens deleted from app/ (copy in legacy/app-v2).
+
 ## v8: UI rebuild on shadcn/ui (2026-10-19)
 Why: the single-page tab app had no URLs, three colour systems, duplicated screens, fake stations/photos and a silent
 simulation fallback. Rebuilt the frontend; the pipeline is not connected yet.

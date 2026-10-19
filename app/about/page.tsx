@@ -83,7 +83,10 @@ export default function AboutPage() {
               <span className="text-foreground">Per quadrat</span> (default) divides a station&apos;s total by its number of photos, so stations surveyed
               more often do not look hotter. <span className="text-foreground">Station total</span> shows the plain sum.
             </p>
-            <p>Each class is its own heat layer with a fixed colour; switch layers off to compare one class across stations.</p>
+            <p>
+              The heat shows one quantity at a time (default: not-live colonies) on a thermal scale from dark (none) to pale yellow (the highest
+              station). The slow shimmer is decoration only; switch off Motion for an exact still.
+            </p>
           </CardContent>
         </Card>
         <Card>

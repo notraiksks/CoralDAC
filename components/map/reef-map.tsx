@@ -2,10 +2,11 @@
 
 /**
  * Leaflet map of the monitoring stations.
- * - Heatmap: one independent layer per health class with a fixed colour (proposal 4.2.2.7); the heat weight at a
- *   station is the chosen metric (colonies per quadrat, or the raw station total), scaled to the largest value shown.
- * - Markers: a donut of the class mix per station. Stations that share a coordinate are drawn with a small
- *   schematic pixel offset (labelled as such); stored coordinates and counts are never changed.
+ * - Heatmap: a thermal (Inferno) field of one quantity per station (a health class or all not-live colonies),
+ *   weighted by the chosen metric (colonies per quadrat, or the raw station total) and scaled to the largest value
+ *   shown. It shimmers slowly for a live, weather-map feel; the motion never changes values.
+ * - Markers: a donut of the full class mix per station. Markers that would overlap get a schematic pixel offset
+ *   with a leader line to the GPS point; stored coordinates and counts are never changed.
  */
 import * as React from "react"
 import L from "leaflet"
@@ -13,118 +14,20 @@ import "leaflet/dist/leaflet.css"
 import { GeoJSON, MapContainer, Marker, Pane, TileLayer, Tooltip, useMap, useMapEvents } from "react-leaflet"
 import land from "@/lib/data/sea-land.json"
 import { CLASS_META, HEALTH_CLASSES } from "@/lib/classes"
-import type { HeatMetric, StationSummary } from "@/lib/stats"
-import { fmt1 } from "@/lib/stats"
-import type { HealthClass } from "@/lib/types"
+import { fmt1, heatValue, type HeatMetric, type HeatTarget, type StationSummary } from "@/lib/stats"
+import { ThermalLayer } from "./thermal-layer"
 
 export type Basemap = "map" | "satellite"
-export type Layers = Record<HealthClass, boolean>
 
 const LAND = land as unknown as GeoJSON.FeatureCollection
 
-function cssVar(name: string) {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || "#888"
-}
-
-function rgb(color: string): [number, number, number] {
-  const c = document.createElement("canvas").getContext("2d")!
-  c.fillStyle = color
-  const hex = c.fillStyle as string
-  if (hex.startsWith("#")) return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)) as [number, number, number]
-  const m = hex.match(/\d+/g) ?? ["128", "128", "128"]
-  return [Number(m[0]), Number(m[1]), Number(m[2])]
-}
-
-export const metricValue = (s: StationSummary, k: HealthClass, metric: HeatMetric) =>
-  metric === "total" ? s.totals[k] : s.perQuadrat[k]
-
-/* ---------------- heat layer ---------------- */
-
-function HeatLayer({ summaries, layers, metric, visible, themeKey }: {
-  summaries: StationSummary[]
-  layers: Layers
-  metric: HeatMetric
-  visible: boolean
-  themeKey: string
-}) {
-  const map = useMap()
-  const canvasRef = React.useRef<HTMLCanvasElement | null>(null)
-
-  React.useEffect(() => {
-    const pane = map.getPane("heat") ?? map.createPane("heat")
-    pane.style.zIndex = "350"
-    pane.style.pointerEvents = "none"
-    const canvas = L.DomUtil.create("canvas", "", pane) as HTMLCanvasElement
-    canvas.style.position = "absolute"
-    canvas.style.transition = "opacity .2s"
-    canvasRef.current = canvas
-    return () => {
-      canvas.remove()
-      canvasRef.current = null
-    }
-  }, [map])
-
-  const draw = React.useCallback(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const size = map.getSize()
-    const dpr = window.devicePixelRatio || 1
-    canvas.width = size.x * dpr
-    canvas.height = size.y * dpr
-    canvas.style.width = `${size.x}px`
-    canvas.style.height = `${size.y}px`
-    L.DomUtil.setPosition(canvas, map.containerPointToLayerPoint([0, 0]))
-    const ctx = canvas.getContext("2d")!
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    ctx.clearRect(0, 0, size.x, size.y)
-    if (!visible) return
-
-    const shown = HEALTH_CLASSES.filter((k) => layers[k])
-    const max = Math.max(1e-9, ...summaries.flatMap((s) => shown.map((k) => metricValue(s, k, metric))))
-    const lat = map.getCenter().lat
-    const metersPerPx = (156543.03392 * Math.cos((lat * Math.PI) / 180)) / 2 ** map.getZoom()
-    const radius = Math.min(150, Math.max(34, 700 / metersPerPx))
-    for (const k of shown) {
-      const [r, g, b] = rgb(cssVar(`--${k.toLowerCase()}`))
-      for (const s of summaries) {
-        const v = metricValue(s, k, metric)
-        if (v <= 0) continue
-        const p = map.latLngToContainerPoint([s.station.lat, s.station.lng])
-        const a = 0.12 + 0.6 * (v / max)
-        const rr = radius * (0.55 + 0.45 * Math.sqrt(v / max))
-        const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, rr)
-        grad.addColorStop(0, `rgba(${r},${g},${b},${a})`)
-        grad.addColorStop(0.45, `rgba(${r},${g},${b},${a * 0.6})`)
-        grad.addColorStop(1, `rgba(${r},${g},${b},0)`)
-        ctx.fillStyle = grad
-        ctx.beginPath()
-        ctx.arc(p.x, p.y, rr, 0, Math.PI * 2)
-        ctx.fill()
-      }
-    }
-    // themeKey is a dependency so colours are re-read after a theme switch
-  }, [map, summaries, layers, metric, visible, themeKey]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  useMapEvents({
-    move: draw,
-    resize: draw,
-    zoomstart: () => canvasRef.current && (canvasRef.current.style.opacity = "0"),
-    zoomend: () => {
-      draw()
-      if (canvasRef.current) canvasRef.current.style.opacity = "1"
-    },
-  })
-  React.useEffect(draw, [draw])
-  return null
-}
-
 /* ---------------- station markers ---------------- */
 
-function donutSvg(s: StationSummary, layers: Layers, size: number, selected: boolean) {
+function donutSvg(s: StationSummary, size: number, selected: boolean) {
   const r = size / 2 - 3
   const c = 2 * Math.PI * r
-  const shown = HEALTH_CLASSES.filter((k) => layers[k])
-  const total = shown.reduce((a, k) => a + s.totals[k], 0)
+  const shown = HEALTH_CLASSES
+  const total = s.colonies
   let offset = 0
   const arcs = total
     ? shown
@@ -143,10 +46,9 @@ function donutSvg(s: StationSummary, layers: Layers, size: number, selected: boo
   </svg>`
 }
 
-function stationIcon(s: StationSummary, layers: Layers, metric: HeatMetric, offset: [number, number], selected: boolean) {
+function stationIcon(s: StationSummary, target: HeatTarget, metric: HeatMetric, offset: [number, number], selected: boolean) {
   const size = selected ? 52 : 44
-  const shown = HEALTH_CLASSES.filter((k) => layers[k])
-  const value = shown.reduce((a, k) => a + metricValue(s, k, metric), 0)
+  const value = heatValue(s, target, metric)
   const label = metric === "total" ? String(Math.round(value)) : fmt1(value)
   const [dx, dy] = offset
   const html = `
@@ -154,7 +56,7 @@ function stationIcon(s: StationSummary, layers: Layers, metric: HeatMetric, offs
       ${dx || dy ? `<svg style="position:absolute;left:${Math.min(0, dx)}px;top:${Math.min(0, dy)}px;overflow:visible" width="${Math.abs(dx) || 1}" height="${Math.abs(dy) || 1}"><line x1="${dx < 0 ? -dx : 0}" y1="${dy < 0 ? -dy : 0}" x2="${dx < 0 ? 0 : dx}" y2="${dy < 0 ? 0 : dy}" stroke="var(--foreground)" stroke-opacity=".5" stroke-width="1.5" stroke-dasharray="3 2"/></svg>
       <span style="position:absolute;left:-4px;top:-4px;width:8px;height:8px;border-radius:9px;background:var(--foreground);border:2px solid var(--card)"></span>` : ""}
       <div style="position:absolute;left:${dx - size / 2}px;top:${dy - size / 2}px;width:${size}px;height:${size}px;cursor:pointer">
-        ${donutSvg(s, layers, size, selected)}
+        ${donutSvg(s, size, selected)}
         <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:600 ${selected ? 13 : 12}px var(--font-inter),system-ui,sans-serif;color:var(--foreground);font-variant-numeric:tabular-nums">${label}</span>
       </div>
     </div>`
@@ -194,9 +96,9 @@ function declutter(summaries: StationSummary[], map: L.Map, zoom: number): Recor
   return out
 }
 
-function StationMarkers({ summaries, layers, metric, selectedId, onSelect }: {
+function StationMarkers({ summaries, target, metric, selectedId, onSelect }: {
   summaries: StationSummary[]
-  layers: Layers
+  target: HeatTarget
   metric: HeatMetric
   selectedId: string | null
   onSelect: (id: string) => void
@@ -205,7 +107,6 @@ function StationMarkers({ summaries, layers, metric, selectedId, onSelect }: {
   const [zoom, setZoom] = React.useState(() => map.getZoom())
   useMapEvents({ zoomend: () => setZoom(map.getZoom()) })
   const offsets = React.useMemo(() => declutter(summaries, map, zoom), [summaries, map, zoom])
-  const layerKey = HEALTH_CLASSES.map((k) => +layers[k]).join("")
   return (
     <>
       {summaries.map((s) => {
@@ -214,9 +115,9 @@ function StationMarkers({ summaries, layers, metric, selectedId, onSelect }: {
         const selected = selectedId === s.station.id
         return (
           <Marker
-            key={`${s.station.id}-${selected}-${metric}-${layerKey}-${s.colonies}-${off.join(",")}`}
+            key={`${s.station.id}-${selected}-${metric}-${target}-${s.colonies}-${off.join(",")}`}
             position={[s.station.lat, s.station.lng]}
-            icon={stationIcon(s, layers, metric, off, selected)}
+            icon={stationIcon(s, target, metric, off, selected)}
             zIndexOffset={selected ? 1000 : 0}
             keyboard
             title={s.station.name}
@@ -260,9 +161,9 @@ function Tiles({ basemap, dark }: { basemap: Basemap; dark: boolean }) {
         />
       </>
     )
-  // Esri basemaps need no API key; Ocean shows bathymetry, Dark Gray suits dark mode
-  const base = dark ? "Canvas/World_Dark_Gray_Base" : "Ocean/World_Ocean_Base"
-  const ref = dark ? "Canvas/World_Dark_Gray_Reference" : "Ocean/World_Ocean_Reference"
+  // Esri canvas basemaps need no API key and keep the thermal colours readable (the Ocean basemap has no data here)
+  const base = `Canvas/World_${dark ? "Dark" : "Light"}_Gray_Base`
+  const ref = `Canvas/World_${dark ? "Dark" : "Light"}_Gray_Reference`
   return (
     <>
       <TileLayer
@@ -285,9 +186,10 @@ function Bridge({ onReady }: { onReady: (m: L.Map) => void }) {
 
 export interface ReefMapProps {
   summaries: StationSummary[]
-  layers: Layers
+  target: HeatTarget
   metric: HeatMetric
   heatOn: boolean
+  animate: boolean
   basemap: Basemap
   dark: boolean
   selectedId: string | null
@@ -295,11 +197,17 @@ export interface ReefMapProps {
   onReady: (m: L.Map) => void
 }
 
-export default function ReefMap({ summaries, layers, metric, heatOn, basemap, dark, selectedId, onSelect, onReady }: ReefMapProps) {
+export default function ReefMap({ summaries, target, metric, heatOn, animate, basemap, dark, selectedId, onSelect, onReady }: ReefMapProps) {
   const bounds = React.useMemo(
     () => L.latLngBounds(summaries.map((s) => [s.station.lat, s.station.lng] as [number, number])).pad(0.35),
     [summaries]
   )
+
+  const points = React.useMemo(() => {
+    const vals = summaries.map((s) => heatValue(s, target, metric))
+    const max = Math.max(1e-9, ...vals)
+    return summaries.map((s, i) => ({ lat: s.station.lat, lng: s.station.lng, w: vals[i] / max }))
+  }, [summaries, target, metric])
 
   return (
     <MapContainer
@@ -315,8 +223,8 @@ export default function ReefMap({ summaries, layers, metric, heatOn, basemap, da
         />
       </Pane>
       <Tiles basemap={basemap} dark={dark} />
-      <HeatLayer summaries={summaries} layers={layers} metric={metric} visible={heatOn} themeKey={dark ? "d" : "l"} />
-      <StationMarkers summaries={summaries} layers={layers} metric={metric} selectedId={selectedId} onSelect={onSelect} />
+      <ThermalLayer points={points} visible={heatOn} animate={animate} opacity={dark ? 0.85 : 0.8} coldFade={dark || basemap === "satellite" ? 1 : 1.5} />
+      <StationMarkers summaries={summaries} target={target} metric={metric} selectedId={selectedId} onSelect={onSelect} />
       <Bridge onReady={onReady} />
     </MapContainer>
   )

@@ -13,25 +13,25 @@ import { Card } from "@/components/ui/card"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { ClassBreakdown, ClassDot, Stat } from "@/components/class-ui"
+import { ClassBreakdown, Stat } from "@/components/class-ui"
 import { STATIONS } from "@/lib/archive"
-import { CLASS_META, HEALTH_CLASSES, impactedShare } from "@/lib/classes"
-import { fmt1, overall, summarizeStations, type HeatMetric, type StationSummary } from "@/lib/stats"
+import { HEALTH_CLASSES, impactedShare } from "@/lib/classes"
+import { fmt1, HEAT_TARGETS, heatValue, summarizeStations, type HeatMetric, type HeatTarget, type StationSummary } from "@/lib/stats"
 import { useStore } from "@/lib/store"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
-import type { Basemap, Layers } from "./reef-map"
+import type { Basemap } from "./reef-map"
+import { INFERNO_CSS } from "@/lib/inferno"
 
 const ReefMap = dynamic(() => import("./reef-map"), {
   ssr: false,
   loading: () => <Skeleton className="absolute inset-0 rounded-none" />,
 })
-
-const ALL_ON: Layers = { LC: true, PB: true, DC: true, DCA: true }
 
 export function MapExplorer() {
   const { images } = useStore()
@@ -42,7 +42,8 @@ export function MapExplorer() {
   const params = useSearchParams()
   const selectedId = params.get("station")
 
-  const [layers, setLayers] = React.useState<Layers>(ALL_ON)
+  const [target, setTarget] = React.useState<HeatTarget>("NOTLIVE")
+  const [animate, setAnimate] = React.useState(true)
   const [metric, setMetric] = React.useState<HeatMetric>("perQuadrat")
   const [heatOn, setHeatOn] = React.useState(true)
   const [basemap, setBasemap] = React.useState<Basemap>("map")
@@ -72,21 +73,26 @@ export function MapExplorer() {
     )
   }
 
+  // a shared link (?station=...) opens with that station in view
+  const initialStation = React.useRef(selected)
   const onReady = React.useCallback((m: L.Map) => {
     mapRef.current = m
+    const s = initialStation.current
+    if (s) m.setView([s.station.lat, s.station.lng], 14, { animate: false })
   }, [])
 
   const controls = (
-    <LayerControls layers={layers} setLayers={setLayers} metric={metric} setMetric={setMetric} heatOn={heatOn} setHeatOn={setHeatOn} basemap={basemap} setBasemap={setBasemap} summaries={summaries} />
+    <LayerControls target={target} setTarget={setTarget} metric={metric} setMetric={setMetric} heatOn={heatOn} setHeatOn={setHeatOn} animate={animate} setAnimate={setAnimate} basemap={basemap} setBasemap={setBasemap} summaries={summaries} />
   )
 
   return (
     <div className="relative h-[calc(100svh-3rem)] w-full overflow-hidden">
       <ReefMap
         summaries={summaries}
-        layers={layers}
+        target={target}
         metric={metric}
         heatOn={heatOn}
+        animate={animate}
         basemap={basemap}
         dark={resolvedTheme === "dark"}
         selectedId={selectedId}
@@ -182,63 +188,70 @@ function StationSearch({ summaries, onPick }: { summaries: StationSummary[]; onP
 }
 
 function LayerControls({
-  layers,
-  setLayers,
+  target,
+  setTarget,
   metric,
   setMetric,
   heatOn,
   setHeatOn,
+  animate,
+  setAnimate,
   basemap,
   setBasemap,
   summaries,
 }: {
-  layers: Layers
-  setLayers: React.Dispatch<React.SetStateAction<Layers>>
+  target: HeatTarget
+  setTarget: (t: HeatTarget) => void
   metric: HeatMetric
   setMetric: (m: HeatMetric) => void
   heatOn: boolean
   setHeatOn: (v: boolean) => void
+  animate: boolean
+  setAnimate: (v: boolean) => void
   basemap: Basemap
   setBasemap: (b: Basemap) => void
   summaries: StationSummary[]
 }) {
-  const all = overall(summaries)
-  const value = (k: (typeof HEALTH_CLASSES)[number]) =>
-    metric === "total" ? String(all.totals[k]) : fmt1(all.images ? all.totals[k] / all.images : 0)
-  const onlyOne = HEALTH_CLASSES.filter((k) => layers[k]).length === 1
+  const values = summaries.map((s) => heatValue(s, target, metric))
+  const max = Math.max(0, ...values)
+  const unit = metric === "total" ? "colonies" : "per quadrat"
+  const fmt = (v: number) => (metric === "total" ? String(Math.round(v)) : fmt1(v))
 
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-sm font-medium">Coral health</h2>
-          <span className="text-xs text-muted-foreground">{metric === "total" ? "colonies" : "per quadrat"}</span>
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-medium">Heat shows</h2>
+          <Switch checked={heatOn} onCheckedChange={setHeatOn} aria-label="Show heatmap" />
         </div>
-        <ul className="space-y-1">
-          {HEALTH_CLASSES.map((k) => (
-            <li key={k}>
-              <button
-                type="button"
-                aria-pressed={layers[k]}
-                title="Click to toggle, double-click to show only this class"
-                onClick={() => setLayers((l) => ({ ...l, [k]: !l[k] }))}
-                onDoubleClick={() => setLayers(onlyOne && layers[k] ? ALL_ON : { LC: false, PB: false, DC: false, DCA: false, [k]: true })}
-                className={cn(
-                  "flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
-                  !layers[k] && "opacity-45"
-                )}
-              >
-                <ClassDot cls={k} className={cn("size-3", !layers[k] && "bg-transparent! ring-1 ring-muted-foreground")} />
-                <span className="flex-1">{CLASS_META[k].label}</span>
-                <span className="tabular text-muted-foreground">{value(k)}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        <Select value={target} onValueChange={(v) => setTarget(v as HeatTarget)}>
+          <SelectTrigger className="w-full" aria-label="Quantity shown as heat">
+            <SelectValue>{(v: HeatTarget) => HEAT_TARGETS.find((t) => t.id === v)?.label}</SelectValue>
+          </SelectTrigger>
+          <SelectContent className="z-[1400]">
+            {HEAT_TARGETS.map((t) => (
+              <SelectItem key={t.id} value={t.id}>
+                <span className="grid">
+                  <span>{t.label}</span>
+                  <span className="text-xs text-muted-foreground">{t.hint}</span>
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {/* thermal legend */}
+        <div className={cn("space-y-1 pt-1 transition-opacity", !heatOn && "opacity-40")}>
+          <div className="h-2.5 rounded-full" style={{ background: INFERNO_CSS }} aria-hidden="true" />
+          <div className="tabular flex justify-between text-xs text-muted-foreground">
+            <span>0</span>
+            <span>{unit}</span>
+            <span>{fmt(max)}</span>
+          </div>
+        </div>
       </div>
 
       <div className="space-y-2">
-        <h2 className="text-sm font-medium">Heat weight</h2>
+        <h2 className="text-sm font-medium">Weight</h2>
         <ToggleGroup
           variant="outline"
           size="sm"
@@ -260,9 +273,12 @@ function LayerControls({
       </div>
 
       <div className="flex items-center justify-between gap-3 border-t pt-3">
-        <label className="flex items-center gap-2 text-sm">
-          <Switch checked={heatOn} onCheckedChange={setHeatOn} /> Heatmap
-        </label>
+        <Tooltip>
+          <TooltipTrigger render={<label className="flex items-center gap-2 text-sm" />}>
+            <Switch checked={animate} onCheckedChange={setAnimate} disabled={!heatOn} /> Motion
+          </TooltipTrigger>
+          <TooltipContent className="max-w-56">A slow shimmer for a live feel. It never changes the values; turn it off for an exact still.</TooltipContent>
+        </Tooltip>
         <ToggleGroup variant="outline" size="sm" spacing={0} value={[basemap]} onValueChange={(v) => v[0] && setBasemap(v[0] as Basemap)}>
           <ToggleGroupItem value="map">Map</ToggleGroupItem>
           <ToggleGroupItem value="satellite">Satellite</ToggleGroupItem>
