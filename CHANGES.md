@@ -1,3 +1,42 @@
+# CoralDAC (web app for the coral detection + health thesis)
+
+## v8: UI rebuild on shadcn/ui (2026-10-19)
+Why: the single-page tab app had no URLs, three colour systems, duplicated screens, fake stations/photos and a silent
+simulation fallback. Rebuilt the frontend; the pipeline is not connected yet.
+
+- Real routes (App Router): `/` map, `/stations`, `/stations/[id]`, `/images/[id]`, `/upload`, `/uploads`, `/review`, `/about`.
+- shadcn/ui (base-nova, Base UI) + one token set in `app/globals.css`, light/dark (next-themes), Inter via next/font.
+  Health-class colours are Okabe-Ito (colour-blind safe): LC #009e73, PB #e69f00, DC #d55e00, DCA #7b4fa0, not-coral grey.
+- Domain model matches the V2 pipeline: detector box -> CORAL/OTHERS filter -> LC/PB/DC/DCA (`lib/types.ts`).
+  Only CORAL detections are counted; only approved photos feed the map and station totals.
+- Map: one heat layer per class (fixed colours, toggles); heat weight = colonies per quadrat (default) or station total.
+  Markers that would overlap are moved apart on screen with a dashed line to the GPS point (legibility only).
+- Demo data: 42 real 2024 CoralNet photos (6 stations, 36 approved + 6 waiting), real boxes from the frozen detector,
+  SIMULATED filter/health classes. Built by `scripts/build_demo_assets.py` (excludes the CoralNet test cohort and all
+  Detector-Boxing images). The header "Demo data" popover says what is real.
+- Roles are a demo switch (Viewer / Contributor / Reviewer) in the sidebar footer; uploads persist in IndexedDB,
+  review decisions in localStorage ("Reset demo data" clears both).
+- Inference contract (`lib/classify.ts`): `POST {NEXT_PUBLIC_API_URL}/classify` (multipart `file`) ->
+  `{ detections: [{ box:[x,y,w,h] px, det_conf, filter:"CORAL"|"OTHERS", filter_conf, health?, health_conf? }], models? }`.
+  Without the API, results are simulated and labelled as such (toast + alert), never silently.
+- Old single-page screens copied to `legacy/app-v2/`; the originals in `app/components`, `app/lib`, `app/data` are
+  no longer used (kept until removal is approved).
+
+## Run
+    npm install
+    npm run dev
+    # rebuild demo assets (thesis venv): & $env:THESIS_PY scripts/build_demo_assets.py
+
+## Where things are
+- app/                 routes (thin server pages)
+- components/          app shell, map/, image/, upload/, review/, stations/, ui/ (shadcn)
+- lib/                 types, classes (counting), stats (station aggregation), archive (demo data), store (client state),
+                       classify (API client), ingest (EXIF/ZIP/quality), geo, csv
+- public/demo/         downscaled demo photos (webp)
+
+---
+# Earlier versions (history)
+
 # Coral Reef Bleaching Classifier (UI built to the proposal, restyled)
 
 Follows the proposal screens: brand bar + blue tab bar, Upload (Individual/Batch) -> Processing -> Specifics,

@@ -1,0 +1,128 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@import "tailwindcss";
+
+@theme {
+  --font-serif: 'Merriweather', Georgia, serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-reef-display: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-reef-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --color-surface: #fef9eb;
+  --color-surface-dim: #dfdacc;
+  --color-surface-bright: #fef9eb;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f9f3e5;
+  --color-surface-container: #f3eedf;
+  --color-surface-container-high: #ede8da;
+  --color-surface-container-highest: #e7e2d4;
+  --color-on-surface: #1d1c13;
+  --color-on-surface-variant: #40484c;
+  --color-inverse-surface: #323127;
+  --color-inverse-on-surface: #f6f0e2;
+  --color-outline: #70787c;
+  --color-outline-variant: #c0c8cc;
+  --color-surface-tint: #27667b;
+  --color-primary: #00475a;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #1e5f74;
+  --color-on-primary-container: #9cd7ef;
+  --color-inverse-primary: #94cfe7;
+  --color-secondary: #53606d;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #d3e1f0;
+  --color-on-secondary-container: #576471;
+  --color-tertiary: #39460b;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #505e21;
+  --color-on-tertiary-container: #c6d78c;
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+  --color-surface-variant: #e7e2d4;
+  --color-background: #fef9eb;
+  --color-on-background: #1d1c13;
+
+  /* ReefPulse map/upload re-theme (additive; other views untouched).
+     Values match the ui.zip reference mockups exactly. */
+  --color-reef-deep: #0A2830;
+  --color-reef-mid: #123C46;
+  --color-reef-shallow: #1E5B67;
+  --color-reef-shallow-2: #2C7C86;
+  --color-reef-panel: #0F3138;
+  --color-reef-panel-2: rgba(243, 236, 220, 0.05);
+  --color-reef-sand: #F3ECDC;
+  --color-reef-sand-dim: #C9C2AE;
+  --color-reef-line: rgba(243, 236, 220, 0.14);
+  --color-reef-accent: #FF6F4D;
+  --color-reef-lc: #FF6F4D;
+  --color-reef-pb: #F2BF7D;
+  --color-reef-dc: #B9B3A4;
+  --color-reef-dca: #6C8B4E;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+  }
+}
+
+/* ---- App palette (proposal colours, softened) ---- */
+:root {
+  --brand-bar: #6b7185;
+  --tab-bar: #5b7bdc;
+  --tab-bar-dark: #4a67c4;
+  --tab-sep: #3f58b0;
+  --primary: #3f3a8c;
+  --primary-hover: #332f75;
+  --ink: #1f2430;
+  --muted: #6b7280;
+  --card: #ffffff;
+  --panel: #343b52;
+  --c-lc: #3a9d3a;
+  --c-pb: #f5c026;
+  --c-dc: #f26b2d;
+  --c-dca: #e03a3a;
+}
+
+html, body { height: 100%; }
+body {
+  color: var(--ink);
+  background: linear-gradient(180deg, #eef3ff 0%, #f8faff 38%, #edf9f6 100%) fixed;
+}
+.font-display { font-family: 'Outfit', Inter, system-ui, sans-serif; }
+
+/* Leaflet */
+.leaflet-container { background: #1b3a4b; font-family: inherit; outline: none; }
+.leaflet-container .leaflet-control-attribution { font-size: 10px; background: rgba(255,255,255,.75); }
+.reef-pin, .reef-search-pin { background: transparent !important; border: 0 !important; }
+.leaflet-tooltip.reef-tip { font: 600 12px Inter, system-ui, sans-serif; border-radius: 8px; border: 0; box-shadow: 0 2px 8px rgba(0,0,0,.25); padding: 4px 8px; }
+@keyframes reef-pulse { 0% { transform: scale(.6); opacity: .9 } 100% { transform: scale(2.2); opacity: 0 } }
+
+/* Subtle scrollbars for the dark gallery panel */
+.reef-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
+.reef-scroll::-webkit-scrollbar-thumb { background: #b8bdc9; border-radius: 8px; }
+
+@keyframes reef-rise { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
+.reef-rise { animation: reef-rise .35s ease-out both; }
+@media (prefers-reduced-motion: reduce) { .reef-rise { animation: none } }
+
+/* ---- no squares: round Leaflet's own controls and native checkboxes ---- */
+.leaflet-bar { border: 0 !important; border-radius: 9999px !important; overflow: hidden; box-shadow: 0 8px 18px -6px rgba(0,0,0,.5) !important; }
+.leaflet-bar a, .leaflet-bar a:hover { width: 36px !important; height: 36px !important; line-height: 36px !important; font-weight: 700; color: #2d3a8c; border-bottom-color: #e3e7f6 !important; }
+.leaflet-bar a:first-child, .leaflet-bar a:last-child { border-radius: 0 !important; }
+.leaflet-container .leaflet-control-attribution { border-radius: 9999px 0 0 0; padding: 2px 10px; }
+
+input.round-check {
+  appearance: none; -webkit-appearance: none;
+  width: 20px; height: 20px; flex-shrink: 0; cursor: pointer;
+  border-radius: 9999px; border: 2px solid #aab3d6; background: #fff;
+  display: inline-grid; place-content: center; transition: background .15s, border-color .15s;
+}
+input.round-check:checked { background: linear-gradient(135deg, #4a44b5, #3b6fe0); border-color: transparent; }
+input.round-check:checked::after { content: ''; width: 5px; height: 9px; border: solid #fff; border-width: 0 2px 2px 0; transform: translateY(-1px) rotate(45deg); }
+input.round-check:focus-visible { outline: 2px solid #3b6fe0; outline-offset: 2px; }
