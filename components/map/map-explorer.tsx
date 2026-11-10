@@ -272,9 +272,9 @@ function LayerControls({
           <SelectContent className="z-[1400]">
             {HEAT_TARGETS.map((t) => (
               <SelectItem key={t.id} value={t.id}>
-                <span className="grid">
+                <span className="grid whitespace-normal">
                   <span>{t.label}</span>
-                  <span className="text-xs text-muted-foreground">{t.hint}</span>
+                  <span className="text-xs leading-snug text-muted-foreground">{t.hint}</span>
                 </span>
               </SelectItem>
             ))}
@@ -369,7 +369,7 @@ function StationPanel({ s, metric, onClose }: { s: StationSummary; metric: HeatM
         <div className="grid grid-cols-3 gap-2">
           <Stat label="Quadrats" value={s.images} />
           <Stat label="Colonies" value={s.colonies} hint={`${fmt1(s.colonies / Math.max(1, s.images))} / quadrat`} />
-          <Stat label="Bleached or dead" value={`${Math.round(impactedShare(s.totals) * 100)}%`} hint="PB + DC + DCA" />
+          <Stat label="Affected coral" value={`${Math.round(impactedShare(s.totals) * 100)}%`} hint="PB+DC+DCA" />
         </div>
 
         <section className="space-y-2">

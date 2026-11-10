@@ -39,7 +39,7 @@ export function StationsOverview() {
         <Stat label="Stations" value={all.stations} hint="Puerto Galera, Oriental Mindoro" />
         <Stat label="Approved quadrats" value={all.images} />
         <Stat label="Coral colonies" value={all.colonies} hint={`${fmt1(all.colonies / Math.max(1, all.images))} per quadrat`} />
-        <Stat label="Bleached or dead" value={`${Math.round(impactedShare(all.totals) * 100)}%`} hint="PB + DC + DCA" />
+        <Stat label="Affected coral" value={`${Math.round(impactedShare(all.totals) * 100)}%`} hint="PB+DC+DCA" />
       </div>
 
       <Card>
@@ -87,7 +87,7 @@ export function StationsOverview() {
                       <dd className="tabular font-medium">{fmt1(s.colonies / Math.max(1, s.images))}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-muted-foreground">Bleached or dead</dt>
+                      <dt className="text-xs text-muted-foreground">Affected coral</dt>
                       <dd className="tabular font-medium">{Math.round(impactedShare(s.totals) * 100)}%</dd>
                     </div>
                   </dl>

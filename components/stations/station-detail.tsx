@@ -78,7 +78,7 @@ export function StationDetail({ id }: { id: string }) {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat label="Quadrats" value={s.images} hint={`${transects.length} transects`} />
         <Stat label="Coral colonies" value={s.colonies} hint={`${fmt1(s.colonies / Math.max(1, s.images))} per quadrat`} />
-        <Stat label="Bleached or dead" value={`${Math.round(impactedShare(s.totals) * 100)}%`} hint="PB + DC + DCA" />
+        <Stat label="Affected coral" value={`${Math.round(impactedShare(s.totals) * 100)}%`} hint="PB+DC+DCA" />
         <Stat label="Filtered as not coral" value={s.others} hint="Not counted" />
       </div>
 
@@ -131,12 +131,12 @@ export function StationDetail({ id }: { id: string }) {
           </ToggleGroup>
           <Select value={sort} onValueChange={(v) => setSort(v as Sort)}>
             <SelectTrigger size="sm" aria-label="Sort photos" className="w-44">
-              <SelectValue>{(v: Sort) => ({ quadrat: "Sort: survey order", colonies: "Sort: most colonies", impacted: "Sort: most bleached or dead" })[v]}</SelectValue>
+              <SelectValue>{(v: Sort) => ({ quadrat: "Sort: survey order", colonies: "Sort: most colonies", impacted: "Sort: most affected" })[v]}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="quadrat">Survey order</SelectItem>
               <SelectItem value="colonies">Most colonies</SelectItem>
-              <SelectItem value="impacted">Most bleached or dead</SelectItem>
+              <SelectItem value="impacted">Most affected</SelectItem>
             </SelectContent>
           </Select>
         </div>

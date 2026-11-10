@@ -48,18 +48,18 @@ export const pct = (part: number, whole: number, digits = 0) =>
 export const fmt1 = (n: number) => (Math.round(n * 10) / 10).toLocaleString(undefined, { maximumFractionDigits: 1 })
 
 /**
- * What the thermal heatmap measures: the share of colonies that are bleached or dead (a rate, 0..100%), or a count of
- * colonies (all bleached or dead, or one class) weighted per quadrat or as a station total.
+ * What the thermal heatmap measures: the share of affected colonies, PB + DC + DCA (a rate, 0..100%), or a count of
+ * colonies (all affected, or one class) weighted per quadrat or as a station total.
  */
 export type HeatTarget = "SHARE" | "NOTLIVE" | HealthClass
 
 export const HEAT_TARGETS: { id: HeatTarget; label: string; hint: string; classes: HealthClass[] }[] = [
-  { id: "SHARE", label: "Bleached or dead (%)", hint: "Share of colonies that are partially bleached, dead, or dead with algae", classes: [] },
-  { id: "NOTLIVE", label: "Bleached or dead (count)", hint: "Partially bleached, dead and dead-with-algae colonies", classes: ["PB", "DC", "DCA"] },
-  { id: "LC", label: "Live coral", hint: "Living, normally pigmented colonies", classes: ["LC"] },
-  { id: "PB", label: "Partially bleached", hint: "Colonies with pale or white tissue", classes: ["PB"] },
-  { id: "DC", label: "Dead coral", hint: "Recently dead skeletons", classes: ["DC"] },
-  { id: "DCA", label: "Dead coral with algae", hint: "Dead skeletons overgrown by algae", classes: ["DCA"] },
+  { id: "SHARE", label: "Affected coral (%)", hint: "Share of colonies: PB, DC or DCA", classes: [] },
+  { id: "NOTLIVE", label: "Affected coral (count)", hint: "Colonies: PB, DC or DCA", classes: ["PB", "DC", "DCA"] },
+  { id: "LC", label: "Live coral", hint: "Healthy, normal color", classes: ["LC"] },
+  { id: "PB", label: "Partially bleached", hint: "Pale or white tissue", classes: ["PB"] },
+  { id: "DC", label: "Dead coral", hint: "Recently dead skeleton", classes: ["DC"] },
+  { id: "DCA", label: "Dead coral with algae", hint: "Dead, covered by algae", classes: ["DCA"] },
 ]
 
 /** SHARE is a fraction 0..1 (metric does not apply); the others are colony counts. */
