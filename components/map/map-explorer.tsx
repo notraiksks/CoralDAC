@@ -309,13 +309,11 @@ function LayerControls({
             Station total
           </ToggleGroupItem>
         </ToggleGroup>
-        <p className="text-xs text-muted-foreground">
-          {isShare
-            ? "Weight applies to counts only. Percentages always use the 0–100% scale."
-            : metric === "perQuadrat"
-              ? "Mean colonies per photo: fair across stations."
-              : "All colonies at the station, summed."}
-        </p>
+        {!isShare && (
+          <p className="text-xs text-muted-foreground">
+            {metric === "perQuadrat" ? "Mean colonies per photo: fair across stations." : "All colonies at the station, summed."}
+          </p>
+        )}
       </div>
 
       <div className="flex items-center justify-between gap-3 border-t pt-3">
