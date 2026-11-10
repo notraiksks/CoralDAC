@@ -84,8 +84,8 @@ export default function AboutPage() {
               more often do not look hotter. <span className="text-foreground">Station total</span> shows the plain sum.
             </p>
             <p>
-              The heat shows one quantity at a time on a thermal scale. The default, <span className="text-foreground">% not live</span>, is the
-              share of colonies that are bleached or dead, on a fixed 0–100% scale. Counts scale to the highest station shown.
+              The heat shows one quantity at a time on a thermal scale. The default, <span className="text-foreground">Bleached or dead (%)</span>, is the
+              share of colonies that are partially bleached, dead, or dead with algae, on a fixed 0–100% scale. Counts scale to the highest station shown.
             </p>
             <p>
               Each station glows over a ~300 m footprint only, and overlapping glows show the higher value, never a sum. Motion (on by default, switch it off under Layers) is

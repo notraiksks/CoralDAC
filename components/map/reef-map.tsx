@@ -2,7 +2,7 @@
 
 /**
  * Leaflet map of the monitoring stations.
- * - Heatmap: a thermal disc per station (color ramp from lib/heat-ramp.ts) on the GPU (thermal-layer.tsx): the % of colonies not live, or a
+ * - Heatmap: a thermal disc per station (color ramp from lib/heat-ramp.ts) on the GPU (thermal-layer.tsx): the % of colonies bleached or dead, or a
  *   count (per quadrat or station total). Discs have a fixed ~300 m footprint and combine by max, not sum.
  * - Markers: a donut of the full class mix per station. Markers that would overlap get a schematic pixel offset
  *   with a leader line to the GPS point; stored coordinates and counts are never changed.

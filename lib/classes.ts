@@ -40,7 +40,7 @@ export function dominantClass(c: ClassCounts): HealthClass | null {
   return HEALTH_CLASSES.reduce((best, k) => (c[k] > c[best] ? k : best), "LC" as HealthClass)
 }
 
-/** Share of colonies that are not live coral (PB + DC + DCA), 0..1 */
+/** Share of colonies that are bleached or dead (PB + DC + DCA), 0..1 */
 export function impactedShare(c: ClassCounts): number {
   const t = totalOf(c)
   return t ? (c.PB + c.DC + c.DCA) / t : 0

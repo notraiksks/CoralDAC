@@ -48,14 +48,14 @@ export const pct = (part: number, whole: number, digits = 0) =>
 export const fmt1 = (n: number) => (Math.round(n * 10) / 10).toLocaleString(undefined, { maximumFractionDigits: 1 })
 
 /**
- * What the thermal heatmap measures: the share of colonies that are not live (a rate, 0..100%), or a count of
- * colonies (all not-live, or one class) weighted per quadrat or as a station total.
+ * What the thermal heatmap measures: the share of colonies that are bleached or dead (a rate, 0..100%), or a count of
+ * colonies (all bleached or dead, or one class) weighted per quadrat or as a station total.
  */
 export type HeatTarget = "SHARE" | "NOTLIVE" | HealthClass
 
 export const HEAT_TARGETS: { id: HeatTarget; label: string; hint: string; classes: HealthClass[] }[] = [
-  { id: "SHARE", label: "% not live", hint: "Share of colonies that are bleached or dead", classes: [] },
-  { id: "NOTLIVE", label: "Not live (count)", hint: "Partially bleached + dead colonies", classes: ["PB", "DC", "DCA"] },
+  { id: "SHARE", label: "Bleached or dead (%)", hint: "Share of colonies that are partially bleached, dead, or dead with algae", classes: [] },
+  { id: "NOTLIVE", label: "Bleached or dead (count)", hint: "Partially bleached, dead and dead-with-algae colonies", classes: ["PB", "DC", "DCA"] },
   { id: "LC", label: "Live coral", hint: "Living, normally pigmented colonies", classes: ["LC"] },
   { id: "PB", label: "Partially bleached", hint: "Colonies with pale or white tissue", classes: ["PB"] },
   { id: "DC", label: "Dead coral", hint: "Recently dead skeletons", classes: ["DC"] },

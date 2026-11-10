@@ -369,7 +369,7 @@ function StationPanel({ s, metric, onClose }: { s: StationSummary; metric: HeatM
         <div className="grid grid-cols-3 gap-2">
           <Stat label="Quadrats" value={s.images} />
           <Stat label="Colonies" value={s.colonies} hint={`${fmt1(s.colonies / Math.max(1, s.images))} / quadrat`} />
-          <Stat label="Not live" value={`${Math.round(impactedShare(s.totals) * 100)}%`} hint="PB + DC + DCA" />
+          <Stat label="Bleached or dead" value={`${Math.round(impactedShare(s.totals) * 100)}%`} hint="PB + DC + DCA" />
         </div>
 
         <section className="space-y-2">
