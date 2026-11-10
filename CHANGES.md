@@ -16,15 +16,15 @@
   the station. Old single-page screens deleted from app/ (copy in legacy/app-v2).
 
 ## v8: UI rebuild on shadcn/ui (2026-10-19)
-Why: the single-page tab app had no URLs, three colour systems, duplicated screens, fake stations/photos and a silent
+Why: the single-page tab app had no URLs, three color systems, duplicated screens, fake stations/photos and a silent
 simulation fallback. Rebuilt the frontend; the pipeline is not connected yet.
 
 - Real routes (App Router): `/` map, `/stations`, `/stations/[id]`, `/images/[id]`, `/upload`, `/uploads`, `/review`, `/about`.
 - shadcn/ui (base-nova, Base UI) + one token set in `app/globals.css`, light/dark (next-themes), Inter via next/font.
-  Health-class colours are Okabe-Ito (colour-blind safe): LC #009e73, PB #e69f00, DC #d55e00, DCA #7b4fa0, not-coral grey.
+  Health-class colors are Okabe-Ito (color-blind safe): LC #009e73, PB #e69f00, DC #d55e00, DCA #7b4fa0, not-coral gray.
 - Domain model matches the V2 pipeline: detector box -> CORAL/OTHERS filter -> LC/PB/DC/DCA (`lib/types.ts`).
   Only CORAL detections are counted; only approved photos feed the map and station totals.
-- Map: one heat layer per class (fixed colours, toggles); heat weight = colonies per quadrat (default) or station total.
+- Map: one heat layer per class (fixed colors, toggles); heat weight = colonies per quadrat (default) or station total.
   Markers that would overlap are moved apart on screen with a dashed line to the GPS point (legibility only).
 - Demo data: 42 real 2024 CoralNet photos (6 stations, 36 approved + 6 waiting), real boxes from the frozen detector,
   SIMULATED filter/health classes. Built by `scripts/build_demo_assets.py` (excludes the CoralNet test cohort and all
@@ -33,7 +33,7 @@ simulation fallback. Rebuilt the frontend; the pipeline is not connected yet.
   review decisions in localStorage ("Reset demo data" clears both).
 - Inference contract (`lib/classify.ts`): `POST {NEXT_PUBLIC_API_URL}/classify` (multipart `file`) ->
   `{ detections: [{ box:[x,y,w,h] px, det_conf, filter:"CORAL"|"OTHERS", filter_conf, health?, health_conf? }], models? }`.
-  Without the API, results are simulated and labelled as such (toast + alert), never silently.
+  Without the API, results are simulated and labeled as such (toast + alert), never silently.
 - Old single-page screens copied to `legacy/app-v2/`; the originals in `app/components`, `app/lib`, `app/data` are
   no longer used (kept until removal is approved).
 

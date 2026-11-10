@@ -6,9 +6,9 @@
  * - Each station is a disc (flat core at the exact value, soft edge) whose size is a fixed geographic footprint (FOOTPRINT_M, never smaller than
  *   MIN_RADIUS_PX on screen), so the map does not suggest data between stations.
  * - Overlapping discs combine by MAX, never by sum: a cluster of low stations stays low.
- * - Colour comes from the same ramp lookup table as the legend (lib/heat-ramp.ts).
+ * - Color comes from the same ramp lookup table as the legend (lib/heat-ramp.ts).
  * - Optional motion: the sampling position is warped by smooth simplex noise that drifts with time, and the
- *   brightness breathes between 90 % and 100 %. Motion can only lower a value, never raise it above the data.
+ *   brightness breathes between 90% and 100%. Motion can only lower a value, never raise it above the data.
  * Without WebGL a static CPU rendering of the same field is used.
  */
 import * as React from "react"
@@ -44,7 +44,7 @@ uniform vec4 u_pts[${MAX_POINTS}]; // x, y (CSS px, top-left origin), radius px,
 uniform int u_n;
 uniform sampler2D u_lut;
 
-// 2D simplex noise, after Ashima Arts / Ian McEwan (MIT licence)
+// 2D simplex noise, after Ashima Arts / Ian McEwan (MIT license)
 vec3 permute(vec3 x) { return mod(((x * 34.0) + 1.0) * x, 289.0); }
 float snoise(vec2 v) {
   const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);
@@ -130,7 +130,7 @@ function initGl(canvas: HTMLCanvasElement): GL | null {
   gl.enableVertexAttribArray(aPos)
   gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0)
 
-  // colour lookup table as a 256 x 1 texture (same table as the legend); filled by uploadLut()
+  // color lookup table as a 256 x 1 texture (same table as the legend); filled by uploadLut()
   const tex = gl.createTexture()
   gl.bindTexture(gl.TEXTURE_2D, tex)
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1)

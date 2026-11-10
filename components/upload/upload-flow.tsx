@@ -165,7 +165,7 @@ export function UploadFlow() {
   const locationOk = !(source === "manual" && manualError && (lat !== "" || lng !== ""))
   const unassigned = items.filter((it) => !locate(it).stationId).length
 
-  async function analyse() {
+  async function analyze() {
     setStep(2)
     setBusy({ done: 0, total: items.length, label: "Detecting and classifying coral" })
     const out: Item[] = []
@@ -420,8 +420,8 @@ export function UploadFlow() {
             <Button variant="outline" onClick={() => setStep(0)}>
               <ArrowLeft data-icon="inline-start" /> Back
             </Button>
-            <Button disabled={!locationOk} onClick={analyse}>
-              Analyse {items.length} photo{items.length === 1 ? "" : "s"} <ArrowRight data-icon="inline-end" />
+            <Button disabled={!locationOk} onClick={analyze}>
+              Analyze {items.length} photo{items.length === 1 ? "" : "s"} <ArrowRight data-icon="inline-end" />
             </Button>
           </div>
         </div>
@@ -561,7 +561,7 @@ function LocationSummary({ items, locate, ok }: { items: Item[]; locate: (it: It
         )}
         {ok && unassigned > 0 && (
           <p className="text-xs text-muted-foreground">
-            {unassigned} of {items.length} without a station (no location, no station within 1 km, or two depths share the point). They are analysed
+            {unassigned} of {items.length} without a station (no location, no station within 1 km, or two depths share the point). They are analyzed
             and saved, and join the map once a station is assigned.
           </p>
         )}

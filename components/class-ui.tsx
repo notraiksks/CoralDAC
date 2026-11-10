@@ -17,7 +17,7 @@ export function ClassDot({ cls, className }: { cls: AnyClass; className?: string
   )
 }
 
-/** Compact class chip: colour dot + code, full name in a tooltip. */
+/** Compact class chip: color dot + code, full name in a tooltip. */
 export function ClassBadge({ cls, className, long }: { cls: AnyClass; className?: string; long?: boolean }) {
   const meta = CLASS_META[cls]
   const chip = (

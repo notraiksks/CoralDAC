@@ -2,7 +2,7 @@
 
 /**
  * Leaflet map of the monitoring stations.
- * - Heatmap: a thermal disc per station (colour ramp from lib/heat-ramp.ts) on the GPU (thermal-layer.tsx): the % of colonies not live, or a
+ * - Heatmap: a thermal disc per station (color ramp from lib/heat-ramp.ts) on the GPU (thermal-layer.tsx): the % of colonies not live, or a
  *   count (per quadrat or station total). Discs have a fixed ~300 m footprint and combine by max, not sum.
  * - Markers: a donut of the full class mix per station. Markers that would overlap get a schematic pixel offset
  *   with a leader line to the GPS point; stored coordinates and counts are never changed.
@@ -64,7 +64,7 @@ function stationIcon(s: StationSummary, target: HeatTarget, metric: HeatMetric, 
 
 /**
  * Schematic pixel offsets so markers never overlap at the current zoom (proposal: offsets for legibility only).
- * Markers closer than MIN_GAP px are spread on a small ring around their common centre, with a leader line
+ * Markers closer than MIN_GAP px are spread on a small ring around their common center, with a leader line
  * back to the true GPS point.
  */
 const MIN_GAP = 52
@@ -85,7 +85,7 @@ function declutter(summaries: StationSummary[], map: L.Map, zoom: number): Recor
     const cx = g.reduce((a, o) => a + o.p.x, 0) / g.length
     const cy = g.reduce((a, o) => a + o.p.y, 0) / g.length
     const r = Math.max(34, (MIN_GAP * g.length) / (2 * Math.PI) + 6)
-    // keep a stable, geographic-ish order: sort by angle from the centre, Deep before Shallow on ties
+    // keep a stable, geographic-ish order: sort by angle from the center, Deep before Shallow on ties
     const ordered = [...g].sort((a, b) => Math.atan2(a.p.y - cy, a.p.x - cx) - Math.atan2(b.p.y - cy, b.p.x - cx) || a.depth.localeCompare(b.depth))
     ordered.forEach((o, i) => {
       const ang = -Math.PI / 2 + (i * 2 * Math.PI) / g.length + (g.length === 2 ? Math.PI / 2 : 0)
@@ -160,7 +160,7 @@ function Tiles({ basemap, dark }: { basemap: Basemap; dark: boolean }) {
         />
       </>
     )
-  // Esri canvas basemaps need no API key and keep the thermal colours readable (the Ocean basemap has no data here)
+  // Esri canvas basemaps need no API key and keep the thermal colors readable (the Ocean basemap has no data here)
   const base = `Canvas/World_${dark ? "Dark" : "Light"}_Gray_Base`
   const ref = `Canvas/World_${dark ? "Dark" : "Light"}_Gray_Reference`
   return (

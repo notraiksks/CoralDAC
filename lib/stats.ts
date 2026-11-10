@@ -15,7 +15,7 @@ export interface StationSummary {
 export type HeatMetric = "perQuadrat" | "total"
 
 /**
- * Which photos count on the map and in the station statistics: every analysed photo with a station that a reviewer has not
+ * Which photos count on the map and in the station statistics: every analyzed photo with a station that a reviewer has not
  * rejected (Rai, 2026-11-10: no review gate; reviewers correct or reject afterwards). Photos without a station wait for one.
  */
 export const countsOnMap = (i: ReefImage) => i.status !== "rejected"
@@ -48,7 +48,7 @@ export const pct = (part: number, whole: number, digits = 0) =>
 export const fmt1 = (n: number) => (Math.round(n * 10) / 10).toLocaleString(undefined, { maximumFractionDigits: 1 })
 
 /**
- * What the thermal heatmap measures: the share of colonies that are not live (a rate, 0..100 %), or a count of
+ * What the thermal heatmap measures: the share of colonies that are not live (a rate, 0..100%), or a count of
  * colonies (all not-live, or one class) weighted per quadrat or as a station total.
  */
 export type HeatTarget = "SHARE" | "NOTLIVE" | HealthClass
@@ -69,7 +69,7 @@ export function heatValue(s: StationSummary, target: HeatTarget, metric: HeatMet
   return classes.reduce((a, k) => a + (metric === "total" ? s.totals[k] : s.perQuadrat[k]), 0)
 }
 
-/** Legend maximum: rates use the fixed 0..100 % scale, counts scale to the highest station shown. */
+/** Legend maximum: rates use the fixed 0..100% scale, counts scale to the highest station shown. */
 export function heatMax(summaries: StationSummary[], target: HeatTarget, metric: HeatMetric) {
   if (target === "SHARE") return 1
   return Math.max(1e-9, ...summaries.map((s) => heatValue(s, target, metric)))

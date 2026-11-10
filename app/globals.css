@@ -6,8 +6,8 @@
 
 /*
  * One token set for the whole app (shadcn variables).
- * UI chrome is neutral with one ocean-teal accent; colour is reserved for data.
- * Health-class colours follow the Okabe-Ito colour-blind-safe palette (SRS NFR "colour-blind-safe palettes").
+ * UI chrome is neutral with one ocean-teal accent; color is reserved for data.
+ * Health-class colors follow the Okabe-Ito color-blind-safe palette (SRS NFR "color-blind-safe palettes").
  */
 :root {
   --radius: 0.625rem;
@@ -40,7 +40,7 @@
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
 
-  /* health classes (data colours) */
+  /* health classes (data colors) */
   --lc: #009e73;
   --pb: #e69f00;
   --dc: #d55e00;

@@ -82,7 +82,7 @@ export function ReviewQueue() {
     <div className="mx-auto w-full max-w-7xl space-y-5 p-4 md:p-6">
       <PageHeader
         title="Review queue"
-        description="Uploads count on the map as soon as they are analysed. Approve them, correct their classes, or reject them with a reason to take them off the map."
+        description="Uploads count on the map as soon as they are analyzed. Approve them, correct their classes, or reject them with a reason to take them off the map."
         actions={
           <span className="hidden items-center gap-1.5 text-xs text-muted-foreground lg:flex">
             <Kbd>J</Kbd>/<Kbd>K</Kbd> move · <Kbd>A</Kbd> approve · <Kbd>R</Kbd> reject

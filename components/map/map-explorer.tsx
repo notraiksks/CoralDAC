@@ -26,7 +26,7 @@ import { useStore } from "@/lib/store"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import type { Basemap } from "./reef-map"
-import { DEFAULT_HEAT_RAMP, HEAT_RAMPS, heatLegendCss, type HeatRampId } from "@/lib/heat-ramp"
+import { DEFAULT_HEAT_RAMP, heatLegendCss } from "@/lib/heat-ramp"
 
 const ReefMap = dynamic(() => import("./reef-map"), {
   ssr: false,
@@ -47,7 +47,6 @@ export function MapExplorer() {
   const [metric, setMetric] = React.useState<HeatMetric>("perQuadrat")
   const [heatOn, setHeatOn] = React.useState(true)
   const [basemap, setBasemap] = React.useState<Basemap>("satellite")
-  const [ramp, setRamp] = React.useState<HeatRampId>(DEFAULT_HEAT_RAMP)
   const mapRef = React.useRef<L.Map | null>(null)
 
   const summaries = React.useMemo(() => summarizeStations(STATIONS, images), [images])
@@ -83,7 +82,7 @@ export function MapExplorer() {
   }, [])
 
   const controls = (
-    <LayerControls target={target} setTarget={setTarget} metric={metric} setMetric={setMetric} heatOn={heatOn} setHeatOn={setHeatOn} animate={animate} setAnimate={setAnimate} basemap={basemap} setBasemap={setBasemap} ramp={ramp} setRamp={setRamp} dark={resolvedTheme === "dark"} summaries={summaries} />
+    <LayerControls target={target} setTarget={setTarget} metric={metric} setMetric={setMetric} heatOn={heatOn} setHeatOn={setHeatOn} animate={animate} setAnimate={setAnimate} basemap={basemap} setBasemap={setBasemap} dark={resolvedTheme === "dark"} summaries={summaries} />
   )
 
   return (
@@ -96,7 +95,7 @@ export function MapExplorer() {
         animate={animate}
         basemap={basemap}
         dark={resolvedTheme === "dark"}
-        ramp={ramp}
+        ramp={DEFAULT_HEAT_RAMP}
         selectedId={selectedId}
         onSelect={select}
         onReady={onReady}
@@ -239,8 +238,6 @@ function LayerControls({
   setAnimate,
   basemap,
   setBasemap,
-  ramp,
-  setRamp,
   dark,
   summaries,
 }: {
@@ -254,8 +251,6 @@ function LayerControls({
   setAnimate: (v: boolean) => void
   basemap: Basemap
   setBasemap: (b: Basemap) => void
-  ramp: HeatRampId
-  setRamp: (r: HeatRampId) => void
   dark: boolean
   summaries: StationSummary[]
 }) {
@@ -287,7 +282,7 @@ function LayerControls({
         </Select>
         {/* thermal legend */}
         <div className={cn("space-y-1 pt-1 transition-opacity", !heatOn && "opacity-40")}>
-          <div className="h-2.5 rounded-full ring-1 ring-border ring-inset" style={{ background: heatLegendCss(ramp, dark) }} aria-hidden="true" />
+          <div className="h-2.5 rounded-full ring-1 ring-border ring-inset" style={{ background: heatLegendCss(DEFAULT_HEAT_RAMP, dark) }} aria-hidden="true" />
           <div className="tabular flex justify-between text-xs text-muted-foreground">
             <span>{formatHeat(0, target, metric)}</span>
             <span>{unit}</span>
@@ -316,7 +311,7 @@ function LayerControls({
         </ToggleGroup>
         <p className="text-xs text-muted-foreground">
           {isShare
-            ? "A rate needs no weight: scale is fixed at 0–100 %."
+            ? "Weight applies to counts only. Percentages always use the 0–100% scale."
             : metric === "perQuadrat"
               ? "Mean colonies per photo: fair across stations."
               : "All colonies at the station, summed."}
@@ -336,25 +331,6 @@ function LayerControls({
         </ToggleGroup>
       </div>
 
-      {/* colour comparison (Rai, 2026-11-10): remove once a ramp is chosen */}
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-sm">Colours</span>
-        <Select value={ramp} onValueChange={(v) => setRamp(v as HeatRampId)}>
-          <SelectTrigger size="sm" className="w-40" aria-label="Heatmap colours">
-            <SelectValue>{(v: HeatRampId) => HEAT_RAMPS[v]?.label}</SelectValue>
-          </SelectTrigger>
-          <SelectContent className="z-[1400]">
-            {(Object.keys(HEAT_RAMPS) as HeatRampId[]).map((id) => (
-              <SelectItem key={id} value={id}>
-                <span className="flex items-center gap-2">
-                  <span className="h-2 w-10 rounded-full ring-1 ring-border ring-inset" style={{ background: heatLegendCss(id, dark) }} aria-hidden="true" />
-                  {HEAT_RAMPS[id].label}
-                </span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
     </div>
   )
 }

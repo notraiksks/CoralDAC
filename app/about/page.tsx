@@ -76,7 +76,7 @@ export default function AboutPage() {
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
             <p>
-              Each photo is one quadrat. Its colonies are counted per class and added to its station as soon as it is analysed; photos a reviewer
+              Each photo is one quadrat. Its colonies are counted per class and added to its station as soon as it is analyzed; photos a reviewer
               <span className="text-foreground">rejects</span> are taken out, and photos without a station wait until one is assigned.
             </p>
             <p>
@@ -85,7 +85,7 @@ export default function AboutPage() {
             </p>
             <p>
               The heat shows one quantity at a time on a thermal scale. The default, <span className="text-foreground">% not live</span>, is the
-              share of colonies that are bleached or dead, on a fixed 0–100 % scale. Counts scale to the highest station shown.
+              share of colonies that are bleached or dead, on a fixed 0–100% scale. Counts scale to the highest station shown.
             </p>
             <p>
               Each station glows over a ~300 m footprint only, and overlapping glows show the higher value, never a sum. Motion (on by default, switch it off under Layers) is

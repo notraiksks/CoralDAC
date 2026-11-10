@@ -7,8 +7,8 @@ import type { Detection, ReefImage } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 /**
- * Photo with detection boxes drawn in an SVG overlay (normalised coordinates, so it scales with the image).
- * Coral boxes take their health-class colour; boxes the filter rejected as OTHERS are dashed grey.
+ * Photo with detection boxes drawn in an SVG overlay (normalized coordinates, so it scales with the image).
+ * Coral boxes take their health-class color; boxes the filter rejected as OTHERS are dashed gray.
  */
 export function DetectionViewer({
   image,

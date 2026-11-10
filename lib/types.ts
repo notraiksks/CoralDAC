@@ -9,7 +9,7 @@ export type FilterClass = "CORAL" | "OTHERS"
 
 export interface Detection {
   id: string
-  /** [x, y, w, h], normalised to 0..1 of the image */
+  /** [x, y, w, h], normalized to 0..1 of the image */
   box: [number, number, number, number]
   detConf: number
   filter: FilterClass
