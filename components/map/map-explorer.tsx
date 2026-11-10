@@ -21,12 +21,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ClassBreakdown, Stat } from "@/components/class-ui"
 import { STATIONS } from "@/lib/archive"
 import { HEALTH_CLASSES, impactedShare } from "@/lib/classes"
-import { fmt1, formatHeat, HEAT_TARGETS, heatMax, summarizeStations, type HeatMetric, type HeatTarget, type StationSummary } from "@/lib/stats"
+import { countsOnMap, fmt1, formatHeat, HEAT_TARGETS, heatMax, summarizeStations, type HeatMetric, type HeatTarget, type StationSummary } from "@/lib/stats"
 import { useStore } from "@/lib/store"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import type { Basemap } from "./reef-map"
-import { INFERNO_CSS } from "@/lib/inferno"
+import { DEFAULT_HEAT_RAMP, HEAT_RAMPS, heatLegendCss, type HeatRampId } from "@/lib/heat-ramp"
 
 const ReefMap = dynamic(() => import("./reef-map"), {
   ssr: false,
@@ -47,6 +47,7 @@ export function MapExplorer() {
   const [metric, setMetric] = React.useState<HeatMetric>("perQuadrat")
   const [heatOn, setHeatOn] = React.useState(true)
   const [basemap, setBasemap] = React.useState<Basemap>("satellite")
+  const [ramp, setRamp] = React.useState<HeatRampId>(DEFAULT_HEAT_RAMP)
   const mapRef = React.useRef<L.Map | null>(null)
 
   const summaries = React.useMemo(() => summarizeStations(STATIONS, images), [images])
@@ -82,7 +83,7 @@ export function MapExplorer() {
   }, [])
 
   const controls = (
-    <LayerControls target={target} setTarget={setTarget} metric={metric} setMetric={setMetric} heatOn={heatOn} setHeatOn={setHeatOn} animate={animate} setAnimate={setAnimate} basemap={basemap} setBasemap={setBasemap} summaries={summaries} />
+    <LayerControls target={target} setTarget={setTarget} metric={metric} setMetric={setMetric} heatOn={heatOn} setHeatOn={setHeatOn} animate={animate} setAnimate={setAnimate} basemap={basemap} setBasemap={setBasemap} ramp={ramp} setRamp={setRamp} dark={resolvedTheme === "dark"} summaries={summaries} />
   )
 
   return (
@@ -95,6 +96,7 @@ export function MapExplorer() {
         animate={animate}
         basemap={basemap}
         dark={resolvedTheme === "dark"}
+        ramp={ramp}
         selectedId={selectedId}
         onSelect={select}
         onReady={onReady}
@@ -237,6 +239,9 @@ function LayerControls({
   setAnimate,
   basemap,
   setBasemap,
+  ramp,
+  setRamp,
+  dark,
   summaries,
 }: {
   target: HeatTarget
@@ -249,6 +254,9 @@ function LayerControls({
   setAnimate: (v: boolean) => void
   basemap: Basemap
   setBasemap: (b: Basemap) => void
+  ramp: HeatRampId
+  setRamp: (r: HeatRampId) => void
+  dark: boolean
   summaries: StationSummary[]
 }) {
   const isShare = target === "SHARE"
@@ -279,7 +287,7 @@ function LayerControls({
         </Select>
         {/* thermal legend */}
         <div className={cn("space-y-1 pt-1 transition-opacity", !heatOn && "opacity-40")}>
-          <div className="h-2.5 rounded-full" style={{ background: INFERNO_CSS }} aria-hidden="true" />
+          <div className="h-2.5 rounded-full ring-1 ring-border ring-inset" style={{ background: heatLegendCss(ramp, dark) }} aria-hidden="true" />
           <div className="tabular flex justify-between text-xs text-muted-foreground">
             <span>{formatHeat(0, target, metric)}</span>
             <span>{unit}</span>
@@ -327,13 +335,33 @@ function LayerControls({
           <ToggleGroupItem value="satellite">Satellite</ToggleGroupItem>
         </ToggleGroup>
       </div>
+
+      {/* colour comparison (Rai, 2026-11-10): remove once a ramp is chosen */}
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm">Colours</span>
+        <Select value={ramp} onValueChange={(v) => setRamp(v as HeatRampId)}>
+          <SelectTrigger size="sm" className="w-40" aria-label="Heatmap colours">
+            <SelectValue>{(v: HeatRampId) => HEAT_RAMPS[v]?.label}</SelectValue>
+          </SelectTrigger>
+          <SelectContent className="z-[1400]">
+            {(Object.keys(HEAT_RAMPS) as HeatRampId[]).map((id) => (
+              <SelectItem key={id} value={id}>
+                <span className="flex items-center gap-2">
+                  <span className="h-2 w-10 rounded-full ring-1 ring-border ring-inset" style={{ background: heatLegendCss(id, dark) }} aria-hidden="true" />
+                  {HEAT_RAMPS[id].label}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
     </div>
   )
 }
 
 function StationPanel({ s, metric, onClose }: { s: StationSummary; metric: HeatMetric; onClose: () => void }) {
   const { images } = useStore()
-  const photos = images.filter((i) => i.stationId === s.station.id && i.status === "approved")
+  const photos = images.filter((i) => i.stationId === s.station.id && countsOnMap(i))
   const months = [...new Set(photos.map((p) => p.date.slice(0, 7)))].sort()
   const monthLabel = months
     .map((m) => new Date(`${m}-01T00:00`).toLocaleDateString(undefined, { month: "short", year: "numeric" }))
@@ -355,7 +383,7 @@ function StationPanel({ s, metric, onClose }: { s: StationSummary; metric: HeatM
         <div className="min-w-0 flex-1">
           <h2 className="truncate font-semibold">{s.station.name}</h2>
           <p className="text-xs text-muted-foreground">
-            {s.station.depthM ? `${s.station.depthM} m` : s.station.depth} · {monthLabel || "no approved photos"}
+            {s.station.depthM ? `${s.station.depthM} m` : s.station.depth} · {monthLabel || "no photos yet"}
           </p>
         </div>
         <Button variant="ghost" size="icon-sm" aria-label="Close station panel" onClick={onClose}>

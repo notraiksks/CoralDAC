@@ -1,5 +1,6 @@
 "use client"
 
+import { useDocMode } from "@/lib/doc-mode"
 import { ChevronsUpDown, Eye, ShieldCheck, UserRound } from "lucide-react"
 import {
   DropdownMenu,
@@ -26,6 +27,7 @@ const HINT: Record<Role, string> = {
 
 export function RoleSwitcher() {
   const { role, setRole, resetDemo } = useStore()
+  const docMode = useDocMode()
   const Icon = ICON[role]
   return (
     <SidebarMenu>
@@ -37,7 +39,7 @@ export function RoleSwitcher() {
             </span>
             <span className="grid flex-1 text-left leading-tight group-data-[collapsible=icon]:hidden">
               <span className="font-medium">{ROLE_META[role].label}</span>
-              <span className="text-xs text-muted-foreground">Demo role</span>
+              {!docMode && <span className="text-xs text-muted-foreground">Demo role</span>}
             </span>
             <ChevronsUpDown className="ml-auto size-4 text-muted-foreground group-data-[collapsible=icon]:hidden" />
           </DropdownMenuTrigger>

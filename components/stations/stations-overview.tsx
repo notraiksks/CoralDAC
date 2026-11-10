@@ -13,7 +13,7 @@ import { PageHeader } from "@/components/page-header"
 import { STATIONS } from "@/lib/archive"
 import { impactedShare } from "@/lib/classes"
 import { exportImagesCsv } from "@/lib/csv"
-import { fmt1, overall, summarizeStations, type HeatMetric } from "@/lib/stats"
+import { countsOnMap, fmt1, overall, summarizeStations, type HeatMetric } from "@/lib/stats"
 import { useStore } from "@/lib/store"
 
 export function StationsOverview() {
@@ -29,7 +29,7 @@ export function StationsOverview() {
         title="Stations"
         description="Coral colonies counted per health class at each monitoring station, from approved quadrat photos only."
         actions={
-          <Button variant="outline" onClick={() => exportImagesCsv(images.filter((i) => i.status === "approved"), "coraldac-approved-images.csv")}>
+          <Button variant="outline" onClick={() => exportImagesCsv(images.filter(countsOnMap), "coraldac-images.csv")}>
             <Download /> Export counts (CSV)
           </Button>
         }
@@ -60,7 +60,7 @@ export function StationsOverview() {
 
       <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {summaries.map((s) => {
-          const cover = images.find((i) => i.stationId === s.station.id && i.status === "approved")
+          const cover = images.find((i) => i.stationId === s.station.id && countsOnMap(i))
           return (
             <li key={s.station.id}>
               <Link

@@ -38,7 +38,8 @@ function dms(value: number, pos: string, neg: string): string {
 
 export const formatLat = (lat: number) => dms(lat, 'N', 'S');
 export const formatLng = (lng: number) => dms(lng, 'E', 'W');
-export const formatCoords = (lat: number, lng: number) => `${formatLat(lat)} ${formatLng(lng)}`;
+export const formatCoords = (lat: number | null, lng: number | null) =>
+  lat == null || lng == null ? "No location" : `${formatLat(lat)} ${formatLng(lng)}`;
 
 /** "2026-03-04T10:41" -> "Mar 4, 2026 · 10:41" (no timezone maths on purpose). */
 export function formatCaptured(capturedAt: string): string {

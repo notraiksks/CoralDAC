@@ -25,7 +25,7 @@ export function exportImagesCsv(images: ReefImage[], filename: string) {
   const rows = images.map((i) => {
     const c = countClasses(i.detections)
     const others = i.detections.filter((d) => finalClass(d) === "OTHERS").length
-    return [i.id, i.file, stationById(i.stationId)?.name ?? "", i.date, i.transect, i.quadrat, i.lat.toFixed(5), i.lng.toFixed(5), i.status, ...HEALTH_CLASSES.map((k) => c[k]), others, i.provenance.simulated ? 1 : 0]
+    return [i.id, i.file, stationById(i.stationId)?.name ?? "", i.date, i.transect, i.quadrat, i.lat?.toFixed(5) ?? "", i.lng?.toFixed(5) ?? "", i.status, ...HEALTH_CLASSES.map((k) => c[k]), others, i.provenance.simulated ? 1 : 0]
   })
   downloadCsv(filename, [head, ...rows])
 }

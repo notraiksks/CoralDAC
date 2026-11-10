@@ -16,12 +16,21 @@ export interface Detection {
   filterConf: number
   health?: HealthClass
   healthConf?: number
+  /** filter probability of OTHERS (D8 x 3-seed mean), from the model server */
+  pOthers?: number
+  /** health-class probabilities (D8 x 3-seed mean), from the model server */
+  p?: Record<HealthClass, number>
+  /** true when the SAM outline was too small and the whole crop was used */
+  maskFallback?: boolean
+  /** colony outline from SAM, polygon in 0..1 image coordinates (optional server field) */
+  mask?: [number, number][]
   /** set when a reviewer changed the model's class */
   reviewed?: HealthClass | "OTHERS"
 }
 
 export type ImageStatus = "approved" | "pending" | "rejected"
-export type LocationSource = "station" | "exif" | "manual"
+/** "none": uploaded without a location; the photo joins the map once a station is assigned */
+export type LocationSource = "station" | "exif" | "manual" | "none"
 
 export interface Station {
   id: string
@@ -40,8 +49,9 @@ export interface ReefImage {
   src: string
   thumb: string
   stationId: string | null
-  lat: number
-  lng: number
+  /** null when the photo was uploaded without a location */
+  lat: number | null
+  lng: number | null
   date: string
   transect: string
   quadrat: number | null

@@ -14,10 +14,15 @@ export interface StationSummary {
 
 export type HeatMetric = "perQuadrat" | "total"
 
-/** Only approved images feed the map and the station statistics (SRS FR-5). */
+/**
+ * Which photos count on the map and in the station statistics: every analysed photo with a station that a reviewer has not
+ * rejected (Rai, 2026-11-10: no review gate; reviewers correct or reject afterwards). Photos without a station wait for one.
+ */
+export const countsOnMap = (i: ReefImage) => i.status !== "rejected"
+
 export function summarizeStations(stations: Station[], images: ReefImage[]): StationSummary[] {
   return stations.map((station) => {
-    const own = images.filter((i) => i.stationId === station.id && i.status === "approved")
+    const own = images.filter((i) => i.stationId === station.id && countsOnMap(i))
     let totals = emptyCounts()
     let others = 0
     for (const img of own) {

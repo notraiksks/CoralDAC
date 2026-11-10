@@ -2,7 +2,7 @@
 
 /**
  * Leaflet map of the monitoring stations.
- * - Heatmap: a thermal (Inferno) disc per station on the GPU (thermal-layer.tsx): the % of colonies not live, or a
+ * - Heatmap: a thermal disc per station (colour ramp from lib/heat-ramp.ts) on the GPU (thermal-layer.tsx): the % of colonies not live, or a
  *   count (per quadrat or station total). Discs have a fixed ~300 m footprint and combine by max, not sum.
  * - Markers: a donut of the full class mix per station. Markers that would overlap get a schematic pixel offset
  *   with a leader line to the GPS point; stored coordinates and counts are never changed.
@@ -15,6 +15,7 @@ import land from "@/lib/data/sea-land.json"
 import { CLASS_META, HEALTH_CLASSES } from "@/lib/classes"
 import { fmt1, formatHeat, heatMax, heatValue, type HeatMetric, type HeatTarget, type StationSummary } from "@/lib/stats"
 import { ThermalLayer } from "./thermal-layer"
+import { HEAT_RAMPS, type HeatRampId } from "@/lib/heat-ramp"
 
 export type Basemap = "map" | "satellite"
 
@@ -190,12 +191,13 @@ export interface ReefMapProps {
   animate: boolean
   basemap: Basemap
   dark: boolean
+  ramp: HeatRampId
   selectedId: string | null
   onSelect: (id: string) => void
   onReady: (m: L.Map) => void
 }
 
-export default function ReefMap({ summaries, target, metric, heatOn, animate, basemap, dark, selectedId, onSelect, onReady }: ReefMapProps) {
+export default function ReefMap({ summaries, target, metric, heatOn, animate, basemap, dark, ramp, selectedId, onSelect, onReady }: ReefMapProps) {
   const bounds = React.useMemo(
     () => L.latLngBounds(summaries.map((s) => [s.station.lat, s.station.lng] as [number, number])).pad(0.35),
     [summaries]
@@ -220,7 +222,14 @@ export default function ReefMap({ summaries, target, metric, heatOn, animate, ba
         />
       </Pane>
       <Tiles basemap={basemap} dark={dark} />
-      <ThermalLayer points={points} visible={heatOn} animate={animate} opacity={dark ? 0.85 : 0.8} coldFade={dark || basemap === "satellite" ? 1 : 1.5} />
+      <ThermalLayer
+        points={points}
+        visible={heatOn}
+        animate={animate}
+        ramp={ramp}
+        opacity={dark ? HEAT_RAMPS[ramp].opacity.dark : HEAT_RAMPS[ramp].opacity.light}
+        coldFade={dark || basemap === "satellite" ? HEAT_RAMPS[ramp].coldFade.dark : HEAT_RAMPS[ramp].coldFade.light}
+      />
       <StationMarkers summaries={summaries} target={target} metric={metric} selectedId={selectedId} onSelect={onSelect} />
       <Bridge onReady={onReady} />
     </MapContainer>

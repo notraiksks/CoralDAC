@@ -20,7 +20,7 @@ export default function AboutPage() {
     <div className="mx-auto w-full max-w-5xl space-y-8 p-4 md:p-6">
       <PageHeader
         title="How it works"
-        description="CoralDAC turns photo-quadrat surveys into a map of coral health: two models read each photo, a reviewer checks it, and approved counts are added up per monitoring station."
+        description="CoralDAC turns photo-quadrat surveys into a map of coral health: two models read each photo, the counts are added up per monitoring station, and a reviewer can correct or reject a photo afterwards."
       />
 
       <section aria-labelledby="pipeline" className="space-y-3">
@@ -76,8 +76,8 @@ export default function AboutPage() {
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
             <p>
-              Each photo is one quadrat. Its colonies are counted per class, and only <span className="text-foreground">approved</span> photos are added to
-              their station.
+              Each photo is one quadrat. Its colonies are counted per class and added to its station as soon as it is analysed; photos a reviewer
+              <span className="text-foreground">rejects</span> are taken out, and photos without a station wait until one is assigned.
             </p>
             <p>
               For counts, <span className="text-foreground">Per quadrat</span> (default) divides a station&apos;s total by its number of photos, so stations surveyed

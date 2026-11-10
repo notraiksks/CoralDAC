@@ -1,5 +1,6 @@
 "use client"
 
+import { useDocMode } from "@/lib/doc-mode"
 import * as React from "react"
 import Image from "next/image"
 import Link from "next/link"
@@ -67,7 +68,7 @@ export function ReviewQueue() {
       lng: st && st.id !== img.stationId ? st.lng : img.lng,
       provenance: { ...img.provenance, review: { by: "Reviewer (demo)", at, decision, reason: extra.reason, note: extra.note || undefined } },
     })
-    toast(decision === "approved" ? "Approved — now counted on the map" : `Rejected: ${extra.reason}`, {
+    toast(decision === "approved" ? "Approved" : `Rejected: ${extra.reason}`, {
       action: {
         label: "Undo",
         onClick: () => updateImage(img),
@@ -81,7 +82,7 @@ export function ReviewQueue() {
     <div className="mx-auto w-full max-w-7xl space-y-5 p-4 md:p-6">
       <PageHeader
         title="Review queue"
-        description="Approve uploads to add their counts to the station totals and the map, or reject them with a reason."
+        description="Uploads count on the map as soon as they are analysed. Approve them, correct their classes, or reject them with a reason to take them off the map."
         actions={
           <span className="hidden items-center gap-1.5 text-xs text-muted-foreground lg:flex">
             <Kbd>J</Kbd>/<Kbd>K</Kbd> move · <Kbd>A</Kbd> approve · <Kbd>R</Kbd> reject
@@ -169,6 +170,7 @@ function ReviewPanel({
   onMove: (delta: number) => void
   readOnly: boolean
 }) {
+  const docMode = useDocMode()
   const [checks, setChecks] = React.useState<boolean[]>(CHECKS.map(() => false))
   const [rejecting, setRejecting] = React.useState(false)
   const [reason, setReason] = React.useState<string>("")
@@ -201,7 +203,7 @@ function ReviewPanel({
             {img.file} · uploaded by {img.provenance.uploader}
             {img.provenance.uploadedAt ? ` on ${formatDate(img.provenance.uploadedAt)}` : ""}
           </span>
-          {img.provenance.simulated && (
+          {img.provenance.simulated && !docMode && (
             <Badge variant="outline" className="border-dashed">
               <FlaskConical className="text-pb" /> Simulated classes
             </Badge>

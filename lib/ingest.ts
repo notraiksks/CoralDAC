@@ -88,50 +88,10 @@ export async function readExif(file: File): Promise<ExifInfo> {
   return info;
 }
 
-export interface QualityReport {
-  warnings: string[];
-  megapixels: number;
-}
-
-export async function assessQuality(file: File): Promise<{ report: QualityReport; width: number; height: number }> {
+/** Pixel size of an image (decodes it once, which also proves it is readable). Quality warnings were dropped (Rai, 2026-11-10). */
+export async function readDimensions(file: File): Promise<{ width: number; height: number }> {
   const bmp = await createImageBitmap(file);
-  const width = bmp.width;
-  const height = bmp.height;
-  const sw = 256;
-  const sh = Math.max(1, Math.round((256 * height) / width));
-  const canvas = document.createElement('canvas');
-  canvas.width = sw;
-  canvas.height = sh;
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
-  ctx.drawImage(bmp, 0, 0, sw, sh);
+  const out = { width: bmp.width, height: bmp.height };
   bmp.close();
-  const data = ctx.getImageData(0, 0, sw, sh).data;
-  const lum = new Float32Array(sw * sh);
-  let sum = 0;
-  for (let i = 0; i < lum.length; i++) {
-    const v = 0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2];
-    lum[i] = v;
-    sum += v;
-  }
-  const mean = sum / lum.length;
-  let lapSum = 0;
-  let lapSq = 0;
-  let n = 0;
-  for (let y = 1; y < sh - 1; y++) {
-    for (let x = 1; x < sw - 1; x++) {
-      const i = y * sw + x;
-      const lap = 4 * lum[i] - lum[i - 1] - lum[i + 1] - lum[i - sw] - lum[i + sw];
-      lapSum += lap;
-      lapSq += lap * lap;
-      n++;
-    }
-  }
-  const variance = lapSq / n - (lapSum / n) ** 2;
-  const megapixels = (width * height) / 1e6;
-  const warnings: string[] = [];
-  if (megapixels < 2) warnings.push(`Low resolution (${megapixels.toFixed(1)} MP) — small patches may be missed`);
-  if (mean < 40) warnings.push('Image is very dark');
-  if (mean > 220) warnings.push('Image looks overexposed');
-  if (variance < 15) warnings.push('Image may be blurry or out of focus');
-  return { report: { warnings, megapixels }, width, height };
+  return out;
 }

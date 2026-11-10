@@ -6,7 +6,7 @@
  * - Each station is a disc (flat core at the exact value, soft edge) whose size is a fixed geographic footprint (FOOTPRINT_M, never smaller than
  *   MIN_RADIUS_PX on screen), so the map does not suggest data between stations.
  * - Overlapping discs combine by MAX, never by sum: a cluster of low stations stays low.
- * - Colour comes from the same Inferno lookup table as the legend.
+ * - Colour comes from the same ramp lookup table as the legend (lib/heat-ramp.ts).
  * - Optional motion: the sampling position is warped by smooth simplex noise that drifts with time, and the
  *   brightness breathes between 90 % and 100 %. Motion can only lower a value, never raise it above the data.
  * Without WebGL a static CPU rendering of the same field is used.
@@ -14,7 +14,7 @@
 import * as React from "react"
 import L from "leaflet"
 import { useMap, useMapEvents } from "react-leaflet"
-import { INFERNO_LUT } from "@/lib/inferno"
+import { heatLut, type HeatRampId } from "@/lib/heat-ramp"
 
 export interface HeatPoint {
   lat: number
@@ -130,11 +130,10 @@ function initGl(canvas: HTMLCanvasElement): GL | null {
   gl.enableVertexAttribArray(aPos)
   gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0)
 
-  // Inferno lookup table as a 256 x 1 texture (same table as the legend)
+  // colour lookup table as a 256 x 1 texture (same table as the legend); filled by uploadLut()
   const tex = gl.createTexture()
   gl.bindTexture(gl.TEXTURE_2D, tex)
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1)
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, 256, 1, 0, gl.RGB, gl.UNSIGNED_BYTE, new Uint8Array(INFERNO_LUT))
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
@@ -146,14 +145,20 @@ function initGl(canvas: HTMLCanvasElement): GL | null {
   return { gl, loc }
 }
 
+function uploadLut(gl: WebGLRenderingContext, lut: Uint8ClampedArray) {
+  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1)
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, 256, 1, 0, gl.RGB, gl.UNSIGNED_BYTE, new Uint8Array(lut))
+}
+
 type Disc = readonly [x: number, y: number, r: number, w: number]
 
 export function ThermalLayer({
   points,
   visible,
   animate,
-  opacity = 0.82,
+  opacity = 0.6,
   coldFade = 1,
+  ramp = "warm",
 }: {
   points: HeatPoint[]
   visible: boolean
@@ -161,12 +166,21 @@ export function ThermalLayer({
   opacity?: number
   /** >1 fades the cold (purple) end out faster, which reads better on light basemaps */
   coldFade?: number
+  ramp?: HeatRampId
 }) {
   const map = useMap()
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null)
   const glRef = React.useRef<GL | null>(null)
   const [hasGl, setHasGl] = React.useState(false)
   const zooming = React.useRef(false)
+  const rampRef = React.useRef(ramp)
+
+  // new ramp -> new lookup texture (the render effect below redraws because `ramp` is in its deps)
+  React.useEffect(() => {
+    rampRef.current = ramp
+    const g = glRef.current
+    if (g) uploadLut(g.gl, heatLut(ramp))
+  }, [ramp])
 
   React.useEffect(() => {
     const pane = map.getPane("thermal") ?? map.createPane("thermal")
@@ -177,6 +191,7 @@ export function ThermalLayer({
     canvas.style.transition = "opacity .25s"
     canvasRef.current = canvas
     glRef.current = initGl(canvas)
+    if (glRef.current) uploadLut(glRef.current.gl, heatLut(rampRef.current))
     setHasGl(glRef.current != null)
     return () => {
       glRef.current?.gl.getExtension("WEBGL_lose_context")?.loseContext()
@@ -229,7 +244,7 @@ export function ThermalLayer({
       const d = visible ? discs() : []
       const g = glRef.current
       if (!g) {
-        renderCpu(canvas, d, size.x, size.y, opacity, coldFade)
+        renderCpu(canvas, d, size.x, size.y, opacity, coldFade, heatLut(ramp))
         return
       }
       const { gl, loc } = g
@@ -249,7 +264,7 @@ export function ThermalLayer({
       gl.uniform1i(loc.u_n, d.length)
       gl.drawArrays(gl.TRIANGLES, 0, 6)
     },
-    [map, discs, visible, moving, opacity, coldFade]
+    [map, discs, visible, moving, opacity, coldFade, ramp]
   )
 
   // continuous loop while moving (the GPU does the work), a single draw otherwise
@@ -282,8 +297,16 @@ export function ThermalLayer({
   return null
 }
 
-/** Static fallback without WebGL: the same field (max of discs, Inferno), no motion. */
-function renderCpu(canvas: HTMLCanvasElement, discs: Disc[], cssW: number, cssH: number, opacity: number, coldFade: number) {
+/** Static fallback without WebGL: the same field (max of discs, same ramp), no motion. */
+function renderCpu(
+  canvas: HTMLCanvasElement,
+  discs: Disc[],
+  cssW: number,
+  cssH: number,
+  opacity: number,
+  coldFade: number,
+  lut: Uint8ClampedArray
+) {
   const ctx = canvas.getContext("2d")
   if (!ctx) return
   const scale = 0.5 // half resolution is enough for a smooth field
@@ -303,9 +326,9 @@ function renderCpu(canvas: HTMLCanvasElement, discs: Disc[], cssW: number, cssH:
       if (f < 0.012) continue
       const k = Math.round(Math.min(1, f) * 255) * 3
       const o = (y * w + x) * 4
-      img.data[o] = INFERNO_LUT[k]
-      img.data[o + 1] = INFERNO_LUT[k + 1]
-      img.data[o + 2] = INFERNO_LUT[k + 2]
+      img.data[o] = lut[k]
+      img.data[o + 1] = lut[k + 1]
+      img.data[o + 2] = lut[k + 2]
       img.data[o + 3] = 255 * opacity * Math.min(1, Math.pow(f / 0.5, coldFade))
     }
   const off = document.createElement("canvas")

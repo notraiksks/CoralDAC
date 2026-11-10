@@ -1,5 +1,6 @@
 "use client"
 
+import { useDocMode } from "@/lib/doc-mode"
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -79,6 +80,8 @@ export function SiteHeader() {
 }
 
 function DemoBadge() {
+  const docMode = useDocMode()
+  if (docMode) return null
   return (
     <Popover>
       <PopoverTrigger

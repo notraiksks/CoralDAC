@@ -16,7 +16,7 @@ import { stationById } from "@/lib/archive"
 import { addCounts, countClasses, emptyCounts, HEALTH_CLASSES, impactedShare, totalOf } from "@/lib/classes"
 import { exportImagesCsv } from "@/lib/csv"
 import { formatCoords } from "@/lib/geo"
-import { fmt1, summarizeStations } from "@/lib/stats"
+import { countsOnMap, fmt1, summarizeStations } from "@/lib/stats"
 import { useStore } from "@/lib/store"
 
 const monthLabel = (m: string) => new Date(`${m}-01T00:00`).toLocaleDateString(undefined, { month: "short", year: "numeric" })
@@ -26,7 +26,7 @@ type Sort = "quadrat" | "colonies" | "impacted"
 export function StationDetail({ id }: { id: string }) {
   const station = stationById(id)!
   const { images } = useStore()
-  const own = React.useMemo(() => images.filter((i) => i.stationId === id && i.status === "approved"), [images, id])
+  const own = React.useMemo(() => images.filter((i) => i.stationId === id && countsOnMap(i)), [images, id])
   const s = summarizeStations([station], images)[0]
   const months = [...new Set(own.map((i) => i.date.slice(0, 7)))].sort()
   const transects = [...new Set(own.map((i) => i.transect))].sort()

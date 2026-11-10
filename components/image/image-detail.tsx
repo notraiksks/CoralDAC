@@ -1,5 +1,6 @@
 "use client"
 
+import { useDocMode } from "@/lib/doc-mode"
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -35,7 +36,7 @@ import { ROLE_META, useStore } from "@/lib/store"
 import type { Detection, HealthClass, ReefImage } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
-const LOCATION_SOURCE = { station: "Station list", exif: "Photo GPS (EXIF)", manual: "Entered by hand" }
+const LOCATION_SOURCE = { station: "Station list", exif: "Photo GPS (EXIF)", manual: "Entered by hand", none: "Not given at upload" }
 
 export function formatDate(d: string) {
   const dt = new Date(`${d.slice(0, 10)}T00:00`)
@@ -44,6 +45,7 @@ export function formatDate(d: string) {
 
 export function ImageDetail({ id }: { id: string }) {
   const { ready, getImage, images, role, updateImage } = useStore()
+  const docMode = useDocMode()
   const router = useRouter()
   const img = getImage(id)
   const [showBoxes, setShowBoxes] = React.useState(true)
@@ -118,7 +120,7 @@ export function ImageDetail({ id }: { id: string }) {
           </p>
         </div>
         <StatusBadge status={img.status} />
-        {img.provenance.simulated && (
+        {img.provenance.simulated && !docMode && (
           <Tooltip>
             <TooltipTrigger render={<Badge variant="outline" className="border-dashed text-muted-foreground" />}>
               <FlaskConical className="text-pb" /> Simulated classes

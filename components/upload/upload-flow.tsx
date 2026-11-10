@@ -1,9 +1,10 @@
 "use client"
 
+import { useDocMode } from "@/lib/doc-mode"
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, FlaskConical, ImagePlus, Loader2, MapPin, Navigation, PenLine, Trash2, Upload } from "lucide-react"
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, CircleSlash, FlaskConical, ImagePlus, Loader2, MapPin, Navigation, PenLine, Trash2, Upload } from "lucide-react"
 import { toast } from "sonner"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -22,11 +23,11 @@ import { apiConfigured, runInference, type InferenceResult } from "@/lib/classif
 import { formatCoords, haversineKm, inPhilippines, nearestStation } from "@/lib/geo"
 import {
   ACCEPT_BATCH,
-  assessQuality,
   expandZip,
   formatBytes,
   isZip,
   MAX_BATCH_IMAGES,
+  readDimensions,
   readExif,
   validateImageFile,
   type ExifInfo,
@@ -43,7 +44,6 @@ interface Item {
   width: number
   height: number
   exif: ExifInfo
-  warnings: string[]
   quadrat: string
   result?: InferenceResult
 }
@@ -55,6 +55,7 @@ const SNAP_KM = 1
 export function UploadFlow() {
   const router = useRouter()
   const { addUploads } = useStore()
+  const docMode = useDocMode()
   const [step, setStep] = React.useState(0)
   const [items, setItems] = React.useState<Item[]>([])
   const [busy, setBusy] = React.useState<{ done: number; total: number; label: string } | null>(null)
@@ -101,8 +102,8 @@ export function UploadFlow() {
         errs.push(err)
       } else {
         try {
-          const [exif, q] = await Promise.all([readExif(file), assessQuality(file)])
-          next.push({ key: `${file.name}-${file.size}-${file.lastModified}`, file, url: URL.createObjectURL(file), width: q.width, height: q.height, exif, warnings: q.report.warnings, quadrat: "" })
+          const [exif, dims] = await Promise.all([readExif(file), readDimensions(file)])
+          next.push({ key: `${file.name}-${file.size}-${file.lastModified}`, file, url: URL.createObjectURL(file), width: dims.width, height: dims.height, exif, quadrat: "" })
         } catch {
           errs.push(`${file.name}: could not be read as an image`)
         }
@@ -128,14 +129,17 @@ export function UploadFlow() {
       return prev.filter((p) => p.key !== key)
     })
 
-  // resolved location for an item
-  function locate(it: Item): { lat: number; lng: number; stationId: string | null; source: LocationSource } | null {
+  // resolved location for an item; location is optional (Rai, 2026-11-10): without one the photo is saved unassigned
+  function locate(it: Item): Located {
+    const none: Located = { lat: null, lng: null, stationId: null, source: "none" }
+    if (source === "none") return none
     if (source === "station") {
       const st = stationById(stationId)
-      return st ? { lat: st.lat, lng: st.lng, stationId: st.id, source } : null
+      return st ? { lat: st.lat, lng: st.lng, stationId: st.id, source } : none
     }
+    if (source === "manual" && (manualError || lat === "" || lng === "")) return none
     const p = source === "exif" ? (it.exif.lat != null ? { lat: it.exif.lat, lng: it.exif.lng! } : null) : { lat: Number(lat), lng: Number(lng) }
-    if (!p || !Number.isFinite(p.lat) || !Number.isFinite(p.lng)) return null
+    if (!p || !Number.isFinite(p.lat) || !Number.isFinite(p.lng)) return none
     const near = nearestStation(STATIONS, p.lat, p.lng)
     // stations at one site can share a GPS point (Deep / Shallow): then GPS cannot decide, a person must
     const tied = near ? STATIONS.filter((s) => Math.abs(haversineKm(p.lat, p.lng, s.lat, s.lng) - near.km) < 0.05).length > 1 : false
@@ -149,12 +153,17 @@ export function UploadFlow() {
     if (lat === "" || lng === "") return "Enter both latitude and longitude."
     if (!Number.isFinite(la) || la < -90 || la > 90) return "Latitude must be between −90 and 90."
     if (!Number.isFinite(lo) || lo < -180 || lo > 180) return "Longitude must be between −180 and 180."
-    if (!inPhilippines(la, lo)) return "That point is outside the Philippines. Check the signs and decimal points."
     return null
   })()
+  // a hint only, never blocking
+  const manualHint =
+    source === "manual" && !manualError && lat !== "" && lng !== "" && !inPhilippines(Number(lat), Number(lng))
+      ? "That point is outside the Philippines. Check the signs and decimal points."
+      : null
 
-  const locationOk =
-    (source === "station" && !!stationId) || (source === "exif" && withGps === items.length && items.length > 0) || (source === "manual" && !manualError)
+  // only coordinates typed in but malformed block the step; an empty location is allowed
+  const locationOk = !(source === "manual" && manualError && (lat !== "" || lng !== ""))
+  const unassigned = items.filter((it) => !locate(it).stationId).length
 
   async function analyse() {
     setStep(2)
@@ -174,7 +183,7 @@ export function UploadFlow() {
     const now = new Date()
     const stamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}T${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`
     const payload = items.map((it, i) => {
-      const loc = locate(it)!
+      const loc = locate(it)
       const image: ReefImage = {
         id: `UP-${now.getTime().toString(36)}-${i}`,
         file: it.file.name,
@@ -203,15 +212,17 @@ export function UploadFlow() {
       return { image, file: it.file }
     })
     await addUploads(payload)
-    toast.success(`${payload.length} photo${payload.length > 1 ? "s" : ""} sent for review`, {
-      description: "They appear on the map once a reviewer approves them.",
+    toast.success(`${payload.length} photo${payload.length > 1 ? "s" : ""} saved`, {
+      description: unassigned
+        ? `${unassigned} without a station join the map once a station is assigned; the rest count now. Reviewers can still correct them.`
+        : "They count on the map now. Reviewers can still correct or reject them.",
     })
     router.push("/uploads")
   }
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6 p-4 md:p-6">
-      <PageHeader title="Upload photos" description="Add quadrat photos from a survey. Each photo is checked by a reviewer before it counts on the map." />
+      <PageHeader title="Upload photos" description="Add quadrat photos from a survey. Results count on the map right away; reviewers can correct them afterwards." />
       <Stepper step={step} />
 
       {busy && (
@@ -263,11 +274,6 @@ export function UploadFlow() {
                           </span>
                         )}
                       </div>
-                      {it.warnings.length > 0 && (
-                        <div className="mt-0.5 flex items-center gap-1 text-xs text-dc">
-                          <AlertTriangle className="size-3" /> {it.warnings.join(" · ")}
-                        </div>
-                      )}
                     </div>
                     <Button variant="ghost" size="icon-sm" aria-label={`Remove ${it.file.name}`} onClick={() => remove(it.key)}>
                       <Trash2 />
@@ -293,11 +299,12 @@ export function UploadFlow() {
               <CardDescription>Station coordinates are shared by every photo from that station.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
-              <RadioGroup value={source} onValueChange={(v) => setSource(v as LocationSource)} className="grid gap-2 sm:grid-cols-3">
+              <RadioGroup value={source} onValueChange={(v) => setSource(v as LocationSource)} className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 {[
                   { v: "station", icon: MapPin, title: "Pick a station", hint: "Recommended" },
                   { v: "exif", icon: Navigation, title: "Photo GPS", hint: `${withGps} of ${items.length} have GPS` },
                   { v: "manual", icon: PenLine, title: "Enter coordinates", hint: "Decimal degrees" },
+                  { v: "none", icon: CircleSlash, title: "Skip for now", hint: "Assign a station later" },
                 ].map((o) => (
                   <Label
                     key={o.v}
@@ -338,7 +345,7 @@ export function UploadFlow() {
                 <Alert>
                   <AlertTriangle />
                   <AlertTitle>Some photos have no GPS</AlertTitle>
-                  <AlertDescription>Remove them or pick a station for the whole batch.</AlertDescription>
+                  <AlertDescription>They are saved without a location and join the map once a station is assigned.</AlertDescription>
                 </Alert>
               )}
               {source === "manual" && (
@@ -354,6 +361,7 @@ export function UploadFlow() {
                     </div>
                   </div>
                   {manualError && (lat !== "" || lng !== "") && <p className="text-sm text-destructive">{manualError}</p>}
+                  {manualHint && <p className="text-sm text-muted-foreground">{manualHint}</p>}
                 </div>
               )}
 
@@ -421,7 +429,7 @@ export function UploadFlow() {
 
       {step === 2 && !busy && (
         <div className="space-y-4">
-          {items.some((i) => i.result?.simulated) && (
+          {items.some((i) => i.result?.simulated) && !docMode && (
             <Alert>
               <FlaskConical className="text-pb" />
               <AlertTitle>Simulated results</AlertTitle>
@@ -442,7 +450,7 @@ export function UploadFlow() {
               <ArrowLeft data-icon="inline-start" /> Back
             </Button>
             <Button onClick={submit}>
-              <Upload data-icon="inline-start" /> Send {items.length} for review
+              <Upload data-icon="inline-start" /> Save {items.length} photo{items.length === 1 ? "" : "s"}
             </Button>
           </div>
         </div>
@@ -523,10 +531,12 @@ function Dropzone({ onFiles, disabled }: { onFiles: (f: FileList) => void; disab
   )
 }
 
-function LocationSummary({ items, locate, ok }: { items: Item[]; locate: (it: Item) => ReturnType<UploadLocate>; ok: boolean }) {
-  const resolved = items.map(locate).filter(Boolean) as NonNullable<ReturnType<UploadLocate>>[]
-  const stations = new Set(resolved.map((r) => r.stationId ?? "none"))
-  const first = resolved[0]
+function LocationSummary({ items, locate, ok }: { items: Item[]; locate: (it: Item) => Located; ok: boolean }) {
+  const resolved = items.map(locate)
+  const placed = resolved.filter((r) => r.stationId)
+  const stations = new Set(placed.map((r) => r.stationId))
+  const unassigned = resolved.length - placed.length
+  const first = resolved.find((r) => r.lat != null)
   return (
     <Card size="sm" className="h-fit">
       <CardHeader>
@@ -540,7 +550,7 @@ function LocationSummary({ items, locate, ok }: { items: Item[]; locate: (it: It
         <div className="flex justify-between gap-3">
           <span className="text-muted-foreground">Station</span>
           <span className="text-right">
-            {!ok ? "–" : stations.size > 1 ? `${stations.size} different` : first?.stationId ? stationById(first.stationId)?.name : "Not decided by GPS"}
+            {!ok ? "–" : stations.size > 1 ? `${stations.size} different` : stations.size === 1 ? stationById(placed[0].stationId)?.name : "None yet"}
           </span>
         </div>
         {ok && first && (
@@ -549,15 +559,18 @@ function LocationSummary({ items, locate, ok }: { items: Item[]; locate: (it: It
             <span className="tabular text-right text-xs">{formatCoords(first.lat, first.lng)}</span>
           </div>
         )}
-        {ok && first && !first.stationId && (
-          <p className="text-xs text-muted-foreground">No single station within 1 km (or two depths share this point). Pick a station above, or a reviewer will assign one before the photo counts on the map.</p>
+        {ok && unassigned > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {unassigned} of {items.length} without a station (no location, no station within 1 km, or two depths share the point). They are analysed
+            and saved, and join the map once a station is assigned.
+          </p>
         )}
       </CardContent>
     </Card>
   )
 }
 
-type UploadLocate = (it: Item) => { lat: number; lng: number; stationId: string | null; source: LocationSource } | null
+type Located = { lat: number | null; lng: number | null; stationId: string | null; source: LocationSource }
 
 function ResultCard({ item, stationName }: { item: Item; stationName?: string }) {
   const [boxes, setBoxes] = React.useState(true)
