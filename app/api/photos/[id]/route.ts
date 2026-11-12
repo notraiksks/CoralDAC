@@ -13,9 +13,12 @@ export async function DELETE(_request: Request, ctx: { params: Promise<{ id: str
     .eq("id", id)
     .maybeSingle()
   if (!photo || photo.owner !== user.id || photo.source !== "upload") return Response.json({ error: "Not found." }, { status: 404 })
-  await deleteKeys(BUCKET_ORIGINALS, [photo.original_key])
-  await deleteKeys(BUCKET_PUBLIC, [photo.display_key, photo.thumb_key])
-  const { error } = await db.from("photos").delete().eq("id", id)
+  // rows and files in parallel (V2-0381, speed)
+  const [{ error }] = await Promise.all([
+    db.from("photos").delete().eq("id", id),
+    deleteKeys(BUCKET_ORIGINALS, [photo.original_key]),
+    deleteKeys(BUCKET_PUBLIC, [photo.display_key, photo.thumb_key]),
+  ])
   if (error) return Response.json({ error: "Could not delete." }, { status: 500 })
   return Response.json({ deleted: id })
 }

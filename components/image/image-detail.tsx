@@ -45,7 +45,9 @@ export function formatDate(d: string) {
 }
 
 export function ImageDetail({ id }: { id: string }) {
-  const { ready, getImage, images, isOwn, updateImage } = useStore()
+  const { ready, getImage, ensureDetail, images, isOwn, updateImage } = useStore()
+  // colonies and outlines are loaded only for the photo being viewed (V2-0381)
+  React.useEffect(() => ensureDetail(id), [id, ensureDetail])
   const docMode = useDocMode()
   const router = useRouter()
   const img = getImage(id)

@@ -2,7 +2,10 @@ import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 import { SUPABASE_ANON_KEY, SUPABASE_URL, supabaseConfigured } from "@/lib/supabase/env"
 
-/** Keeps the Supabase sign-in session fresh (cookies). Pages stay public; only uploading needs a session. */
+/**
+ * Keeps the Supabase sign-in session fresh (cookies) for the server routes. Runs on /api only (V2-0381, speed): page
+ * navigations no longer wait for a round trip to Supabase; the browser client refreshes its own session.
+ */
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request })
   if (!supabaseConfigured) return response
@@ -22,5 +25,6 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|demo/|.*\\.(?:png|jpg|jpeg|webp|svg|json)$).*)"],
+  // not /api/photos/<id>/image: thumbnails need no session
+  matcher: ["/api/uploads/:path*", "/api/photos/:id"],
 }

@@ -27,6 +27,8 @@ export interface StoreValue {
   myUploads: ReefImage[]
   user: { id: string; email: string | null } | null
   getImage: (id: string) => ReefImage | undefined
+  /** loads a photo's full colonies and outlines (lists carry only summaries); call it on the photo's page */
+  ensureDetail: (id: string) => void
   /** only the uploader may correct, assign a station or delete */
   isOwn: (img: ReefImage) => boolean
   /** local mode: photo + results stored in this browser */

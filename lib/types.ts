@@ -64,6 +64,13 @@ export interface ReefImage {
   camera: string
   detections: Detection[]
   provenance: Provenance
+  /**
+   * Class tally from the database summary (shared mode lists photos without their colonies; the colonies load on the photo's
+   * page). Use imageCounts(img), which prefers the colonies when they are loaded.
+   */
+  counts?: ClassCounts
+  /** colonies rejected as not coral, from the same summary */
+  others?: number
   /** shared database only: analysis state, error text and the uploader's user id */
   status?: PhotoStatus
   error?: string | null

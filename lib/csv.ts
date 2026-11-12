@@ -1,5 +1,5 @@
 import { stationById } from "./archive"
-import { countClasses, finalClass, HEALTH_CLASSES } from "./classes"
+import { finalClass, HEALTH_CLASSES, imageCounts, imageOthers } from "./classes"
 import type { ReefImage } from "./types"
 
 function esc(v: string | number | null | undefined): string {
@@ -23,8 +23,8 @@ export function downloadCsv(filename: string, rows: (string | number | null | un
 export function exportImagesCsv(images: ReefImage[], filename: string) {
   const head = ["image_id", "file", "station", "date", "transect", "quadrat", "latitude", "longitude", ...HEALTH_CLASSES.map((k) => `${k}_count`), "others_count", "simulated"]
   const rows = images.map((i) => {
-    const c = countClasses(i.detections)
-    const others = i.detections.filter((d) => finalClass(d) === "OTHERS").length
+    const c = imageCounts(i)
+    const others = imageOthers(i)
     return [i.id, i.file, stationById(i.stationId)?.name ?? "", i.date, i.transect, i.quadrat, i.lat?.toFixed(5) ?? "", i.lng?.toFixed(5) ?? "", ...HEALTH_CLASSES.map((k) => c[k]), others, i.provenance.simulated ? 1 : 0]
   })
   downloadCsv(filename, [head, ...rows])

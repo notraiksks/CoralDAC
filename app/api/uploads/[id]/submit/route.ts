@@ -19,7 +19,8 @@ export async function POST(_request: Request, ctx: { params: Promise<{ id: strin
     await db.from("photos").delete().eq("id", id)
     return Response.json({ error: "Photos must be at most 10 MB." }, { status: 413 })
   }
-  await db.from("photos").update({ status: "queued" }).eq("id", id)
+  // last_dispatch_at: the database sweeper re-sends only photos not sent in the last 5 minutes (V2-0381)
+  await db.from("photos").update({ status: "queued", last_dispatch_at: new Date().toISOString() }).eq("id", id)
   const sent = await dispatchJob(id)
   return Response.json({ id, status: "queued", sent })
 }

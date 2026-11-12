@@ -13,7 +13,7 @@ import { formatDate } from "@/components/image/image-detail"
 import { PageHeader } from "@/components/page-header"
 import { DeletePhotoButton } from "@/components/upload/delete-photo"
 import { stationById } from "@/lib/archive"
-import { countClasses, totalOf } from "@/lib/classes"
+import { imageCounts, totalOf } from "@/lib/classes"
 import { useStore } from "@/lib/store"
 import type { PhotoStatus } from "@/lib/types"
 import { SignInCard, SignOutButton } from "@/components/auth/sign-in-card"
@@ -103,7 +103,7 @@ export function MyUploads() {
             </TableHeader>
             <TableBody>
               {mine.map((img) => {
-                const c = countClasses(img.detections)
+                const c = imageCounts(img)
                 return (
                   <TableRow key={img.id} className="cursor-pointer" onClick={() => router.push(`/images/${img.id}`)}>
                     <TableCell>

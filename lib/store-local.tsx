@@ -7,6 +7,7 @@
  */
 import * as React from "react"
 import { ARCHIVE_IMAGES } from "./archive"
+import { useArchiveMasks, withMasks } from "./details"
 import { StoreContext, type StoreValue } from "./store-context"
 import type { ReefImage } from "./types"
 
@@ -65,7 +66,20 @@ export function LocalStoreProvider({ children }: { children: React.ReactNode }) 
 
   const images = React.useMemo(() => [...uploads, ...ARCHIVE_IMAGES], [uploads])
 
-  const getImage = React.useCallback((id: string) => images.find((i) => i.id === id), [images])
+  const [masks, loadMasks] = useArchiveMasks()
+  const getImage = React.useCallback(
+    (id: string) => {
+      const img = images.find((i) => i.id === id)
+      return img && img.provenance.source === "archive" ? withMasks(img, masks[id]) : img
+    },
+    [images, masks]
+  )
+  const ensureDetail = React.useCallback(
+    (id: string) => {
+      if (ARCHIVE_IMAGES.some((a) => a.id === id)) loadMasks(id)
+    },
+    [loadMasks]
+  )
 
   const isOwn = React.useCallback((img: ReefImage) => uploads.some((u) => u.id === img.id), [uploads])
 
@@ -123,6 +137,7 @@ export function LocalStoreProvider({ children }: { children: React.ReactNode }) 
       myUploads: uploads,
       user: null,
       getImage,
+      ensureDetail,
       isOwn,
       addUploads,
       uploadPhotos: async () => ({ sent: 0, errors: ["The shared database is not configured."] }),
@@ -133,7 +148,7 @@ export function LocalStoreProvider({ children }: { children: React.ReactNode }) 
       signUp: async () => "Sign-up is not configured.",
       signOut: async () => {},
     }),
-    [ready, images, uploads, getImage, isOwn, addUploads, updateImage, removeUpload, clearUploads]
+    [ready, images, uploads, getImage, ensureDetail, isOwn, addUploads, updateImage, removeUpload, clearUploads]
   )
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
 }

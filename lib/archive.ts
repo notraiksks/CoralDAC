@@ -2,7 +2,7 @@
  * Example archive: 42 real Pipeline-V2 survey photos (images by scripts/build_demo_assets.py). Their boxes, CORAL/OTHERS
  * decisions, health classes and colony outlines are output of the final pipeline (Pipeline-V2 ops/tools/coraldac_demo_archive.py).
  */
-import raw from "./data/demo-archive.json"
+import raw from "./data/demo-index.json" // outlines are in public/demo/masks/<id>.json (scripts/split_archive.mjs)
 import type { Detection, ReefImage, Station } from "./types"
 
 export const DEMO_NOTE: string = raw.mockNote

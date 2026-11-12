@@ -13,7 +13,7 @@ import { ClassBreakdown, Stat } from "@/components/class-ui"
 import { PageHeader } from "@/components/page-header"
 import { PhotoGrid } from "@/components/photo-grid"
 import { stationById } from "@/lib/archive"
-import { addCounts, countClasses, emptyCounts, HEALTH_CLASSES, impactedShare, totalOf } from "@/lib/classes"
+import { addCounts, emptyCounts, HEALTH_CLASSES, imageCounts, impactedShare, totalOf } from "@/lib/classes"
 import { exportImagesCsv } from "@/lib/csv"
 import { formatCoords } from "@/lib/geo"
 import { countsOnMap, fmt1, summarizeStations } from "@/lib/stats"
@@ -39,7 +39,7 @@ export function StationDetail({ id }: { id: string }) {
   const rows: ClassRow[] = months.flatMap((m) =>
     transects.map((t) => {
       const group = own.filter((i) => i.date.startsWith(m) && i.transect === t)
-      const sum = group.reduce((acc, i) => addCounts(acc, countClasses(i.detections)), emptyCounts())
+      const sum = group.reduce((acc, i) => addCounts(acc, imageCounts(i)), emptyCounts())
       const n = Math.max(1, group.length)
       return { label: `${monthLabel(m).split(" ")[0]} ${t}`, ...Object.fromEntries(HEALTH_CLASSES.map((k) => [k, sum[k] / n])) } as ClassRow
     })
@@ -48,8 +48,8 @@ export function StationDetail({ id }: { id: string }) {
   const shown = own
     .filter((i) => (month === "all" || i.date.startsWith(month)) && (transect === "all" || i.transect === transect))
     .sort((a, b) => {
-      if (sort === "colonies") return totalOf(countClasses(b.detections)) - totalOf(countClasses(a.detections))
-      if (sort === "impacted") return impactedShare(countClasses(b.detections)) - impactedShare(countClasses(a.detections))
+      if (sort === "colonies") return totalOf(imageCounts(b)) - totalOf(imageCounts(a))
+      if (sort === "impacted") return impactedShare(imageCounts(b)) - impactedShare(imageCounts(a))
       return a.date.localeCompare(b.date) || a.transect.localeCompare(b.transect) || (a.quadrat ?? 0) - (b.quadrat ?? 0)
     })
 

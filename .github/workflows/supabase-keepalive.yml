@@ -1,0 +1,32 @@
+# Keeps the free Supabase project from pausing (it pauses after about 7 days without activity).
+# Every 2 days it reads one station through the public API. Needs two repository secrets:
+#   SUPABASE_URL       https://<project>.supabase.co
+#   SUPABASE_ANON_KEY  the publishable / anon key (public by design; the database rules protect the data)
+# GitHub runs scheduled workflows from the default branch (main) only; "Run workflow" on the Actions tab tests it at once.
+name: Supabase keep-alive
+
+on:
+  schedule:
+    - cron: "17 3 */2 * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read one station
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "Repository secrets SUPABASE_URL / SUPABASE_ANON_KEY are missing"; exit 1
+          fi
+          code=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            "$SUPABASE_URL/rest/v1/stations?select=id&limit=1")
+          echo "Supabase answered HTTP $code"
+          test "$code" = "200"
