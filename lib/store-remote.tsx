@@ -13,6 +13,7 @@ import type { Detection, HealthClass, LocationSource, PhotoStatus, ReefImage } f
 
 /** login names are e-mail addresses on this placeholder domain (never mailed) */
 export const ACCOUNT_DOMAIN = "coraldac.local"
+const USERNAME_RE = /^[a-z0-9._-]{3,30}$/
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function toDetection(r: any): Detection {
@@ -192,6 +193,25 @@ export function RemoteStoreProvider({ children }: { children: React.ReactNode })
     },
     [sb]
   )
+  // Sign-up (Rai, V2-0378): the login is the username (stored as username@coraldac.local, never mailed); a real e-mail is optional
+  // and kept only as contact in the account's metadata. Needs "Confirm email" off in Supabase so the account works at once.
+  const signUp = React.useCallback(
+    async (username: string, password: string, contact?: string) => {
+      const u = username.trim().toLowerCase()
+      if (!USERNAME_RE.test(u)) return "Username: 3-30 characters, letters, numbers, dot, dash or underscore."
+      if (password.length < 8) return "Password: at least 8 characters."
+      const mail = contact?.trim() || null
+      const { data, error } = await sb.auth.signUp({
+        email: `${u}@${ACCOUNT_DOMAIN}`,
+        password,
+        options: { data: { username: u, contact_email: mail } },
+      })
+      if (error) return /already registered|already exists/i.test(error.message) ? "That username is taken." : error.message
+      if (!data.session) return "Account created, but it needs confirming before it can sign in. Ask the project team."
+      return null
+    },
+    [sb]
+  )
   const signOut = React.useCallback(async () => {
     await sb.auth.signOut()
   }, [sb])
@@ -211,9 +231,10 @@ export function RemoteStoreProvider({ children }: { children: React.ReactNode })
       removeUpload,
       clearUploads: async () => {},
       signIn,
+      signUp,
       signOut,
     }),
-    [ready, images, myUploads, user, getImage, isOwn, uploadPhotos, updateImage, removeUpload, signIn, signOut]
+    [ready, images, myUploads, user, getImage, isOwn, uploadPhotos, updateImage, removeUpload, signIn, signUp, signOut]
   )
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
 }

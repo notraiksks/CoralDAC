@@ -130,6 +130,7 @@ export function LocalStoreProvider({ children }: { children: React.ReactNode }) 
       removeUpload,
       clearUploads,
       signIn: async () => "Sign-in is not configured.",
+      signUp: async () => "Sign-up is not configured.",
       signOut: async () => {},
     }),
     [ready, images, uploads, getImage, isOwn, addUploads, updateImage, removeUpload, clearUploads]

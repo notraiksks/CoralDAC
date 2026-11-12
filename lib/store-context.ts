@@ -38,6 +38,8 @@ export interface StoreValue {
   clearUploads: () => Promise<void>
   /** signs in with an account made by the project (username + password, no e-mail); returns an error message or null */
   signIn: (username: string, password: string) => Promise<string | null>
+  /** creates an account (username + password; e-mail optional, kept only as contact); returns an error message or null */
+  signUp: (username: string, password: string, email?: string) => Promise<string | null>
   signOut: () => Promise<void>
 }
 

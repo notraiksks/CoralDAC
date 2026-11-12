@@ -11,6 +11,7 @@ import { isTestPhotoName } from "@/lib/server/test-photos"
  */
 const TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png" }
 const MAX_BYTES = 10 * 1024 * 1024
+const DAILY_LIMIT = Number(process.env.UPLOADS_PER_DAY ?? 30)
 
 const num = (v: unknown, lo: number, hi: number) =>
   typeof v === "number" && Number.isFinite(v) && v >= lo && v <= hi ? v : null
@@ -34,6 +35,11 @@ export async function POST(request: Request) {
     return Response.json({ error: `${name} belongs to the project's held-out test set and cannot be uploaded.` }, { status: 422 })
 
   const db = supabaseAdmin()
+  // open sign-up (V2-0378): cap GPU use per account
+  const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString()
+  const { count } = await db.from("photos").select("id", { count: "exact", head: true }).eq("owner", user.id).gte("created_at", since)
+  if ((count ?? 0) >= DAILY_LIMIT)
+    return Response.json({ error: `Limit reached: ${DAILY_LIMIT} photos per account per day. Try again tomorrow.` }, { status: 429 })
   let stationId = str(b.stationId, 64)
   let lat = num(b.lat, -90, 90)
   let lng = num(b.lng, -180, 180)
