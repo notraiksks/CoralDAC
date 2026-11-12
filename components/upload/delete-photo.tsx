@@ -37,10 +37,14 @@ export function DeletePhotoButton({ img, iconOnly, onDeleted }: { img: ReefImage
           <Button
             variant="destructive"
             onClick={async () => {
-              await removeUpload(img.id)
-              setOpen(false)
-              toast.success(`${img.file} deleted`)
-              onDeleted?.()
+              try {
+                await removeUpload(img.id)
+                setOpen(false)
+                toast.success(`${img.file} deleted`)
+                onDeleted?.()
+              } catch (e) {
+                toast.error(`${img.file} was not deleted`, { description: e instanceof Error ? e.message : undefined })
+              }
             }}
           >
             <Trash2 /> Delete

@@ -3,7 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { CircleCheck, CircleDashed, Upload } from "lucide-react"
+import { CircleAlert, CircleCheck, CircleDashed, Loader2, Upload } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
@@ -15,13 +15,43 @@ import { DeletePhotoButton } from "@/components/upload/delete-photo"
 import { stationById } from "@/lib/archive"
 import { countClasses, totalOf } from "@/lib/classes"
 import { useStore } from "@/lib/store"
+import type { PhotoStatus } from "@/lib/types"
+import { SignInCard, SignOutButton } from "@/components/auth/sign-in-card"
 
 export const MY_NAME = "You"
 
+const STATUS_TEXT: Record<Exclude<PhotoStatus, "done">, string> = {
+  uploading: "Uploading",
+  queued: "Waiting for the GPU",
+  running: "Analysing",
+  failed: "Analysis failed",
+}
+
+function StatusBadge({ status, error }: { status: Exclude<PhotoStatus, "done">; error?: string | null }) {
+  if (status === "failed")
+    return (
+      <Badge variant="destructive" title={error ?? undefined}>
+        <CircleAlert /> {STATUS_TEXT.failed}
+      </Badge>
+    )
+  return (
+    <Badge variant="secondary">
+      <Loader2 className="animate-spin" /> {STATUS_TEXT[status]}
+    </Badge>
+  )
+}
+
 export function MyUploads() {
-  const { images, isOwn } = useStore()
+  const { myUploads: mine, remote, user } = useStore()
   const router = useRouter()
-  const mine = images.filter(isOwn)
+
+  if (remote && !user)
+    return (
+      <div className="mx-auto w-full max-w-6xl space-y-5 p-4 md:p-6">
+        <PageHeader title="My uploads" description="Sign in to see the photos you uploaded." />
+        <SignInCard next="/uploads" title="Sign in to see your uploads" />
+      </div>
+    )
 
   const action = (
     <Button nativeButton={false} render={<Link href="/upload" />}>
@@ -33,8 +63,17 @@ export function MyUploads() {
     <div className="mx-auto w-full max-w-6xl space-y-5 p-4 md:p-6">
       <PageHeader
         title="My uploads"
-        description="Photos you uploaded from this browser. They count on the map as soon as they have a station; open one to correct a class or delete it."
-        actions={mine.length > 0 && action}
+        description={
+          remote
+            ? "Photos you uploaded. Each is analysed on the GPU, then counts on the map once it has a station; open one to correct a class or delete it."
+            : "Photos you uploaded from this browser. They count on the map as soon as they have a station; open one to correct a class or delete it."
+        }
+        actions={
+          <div className="flex gap-2">
+            {remote && <SignOutButton />}
+            {mine.length > 0 && action}
+          </div>
+        }
       />
       {mine.length === 0 ? (
         <Empty className="border">
@@ -84,7 +123,9 @@ export function MyUploads() {
                       <ClassBar counts={c} height="h-1.5" />
                     </TableCell>
                     <TableCell>
-                      {img.stationId ? (
+                      {img.status && img.status !== "done" ? (
+                        <StatusBadge status={img.status} error={img.error} />
+                      ) : img.stationId ? (
                         <Badge variant="secondary" className="bg-lc/12 text-foreground">
                           <CircleCheck /> On the map
                         </Badge>
