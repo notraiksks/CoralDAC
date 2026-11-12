@@ -21,17 +21,17 @@ export function downloadCsv(filename: string, rows: (string | number | null | un
 
 /** One row per image with its class-count vector (proposal 4.2.2.6 record layout). */
 export function exportImagesCsv(images: ReefImage[], filename: string) {
-  const head = ["image_id", "file", "station", "date", "transect", "quadrat", "latitude", "longitude", "status", ...HEALTH_CLASSES.map((k) => `${k}_count`), "others_count", "simulated"]
+  const head = ["image_id", "file", "station", "date", "transect", "quadrat", "latitude", "longitude", ...HEALTH_CLASSES.map((k) => `${k}_count`), "others_count", "simulated"]
   const rows = images.map((i) => {
     const c = countClasses(i.detections)
     const others = i.detections.filter((d) => finalClass(d) === "OTHERS").length
-    return [i.id, i.file, stationById(i.stationId)?.name ?? "", i.date, i.transect, i.quadrat, i.lat?.toFixed(5) ?? "", i.lng?.toFixed(5) ?? "", i.status, ...HEALTH_CLASSES.map((k) => c[k]), others, i.provenance.simulated ? 1 : 0]
+    return [i.id, i.file, stationById(i.stationId)?.name ?? "", i.date, i.transect, i.quadrat, i.lat?.toFixed(5) ?? "", i.lng?.toFixed(5) ?? "", ...HEALTH_CLASSES.map((k) => c[k]), others, i.provenance.simulated ? 1 : 0]
   })
   downloadCsv(filename, [head, ...rows])
 }
 
 export function exportDetectionsCsv(img: ReefImage) {
-  const head = ["image", "detection", "x", "y", "w", "h", "det_conf", "filter", "filter_conf", "health", "health_conf", "final_class", "reviewed"]
-  const rows = img.detections.map((d) => [img.file, d.id, ...d.box.map((v) => v.toFixed(4)), d.detConf, d.filter, d.filterConf, d.health, d.healthConf, finalClass(d), d.reviewed ? 1 : 0])
+  const head = ["image", "detection", "x", "y", "w", "h", "det_conf", "filter", "filter_conf", "health", "health_conf", "final_class", "corrected"]
+  const rows = img.detections.map((d) => [img.file, d.id, ...d.box.map((v) => v.toFixed(4)), d.detConf, d.filter, d.filterConf, d.health, d.healthConf, finalClass(d), d.corrected ? 1 : 0])
   downloadCsv(`${img.id}-detections.csv`, [head, ...rows])
 }

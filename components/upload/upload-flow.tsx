@@ -198,7 +198,6 @@ export function UploadFlow() {
         width: it.width,
         height: it.height,
         camera: it.exif.camera,
-        status: "pending",
         detections: it.result!.detections,
         provenance: {
           source: "upload",
@@ -214,15 +213,15 @@ export function UploadFlow() {
     await addUploads(payload)
     toast.success(`${payload.length} photo${payload.length > 1 ? "s" : ""} saved`, {
       description: unassigned
-        ? `${unassigned} without a station join the map once a station is assigned; the rest count now. Reviewers can still correct them.`
-        : "They count on the map now. Reviewers can still correct or reject them.",
+        ? `${unassigned} without a station join the map once you choose a station on the photo page; the rest count now.`
+        : "They count on the map now. You can correct a class or delete a photo on its page.",
     })
     router.push("/uploads")
   }
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6 p-4 md:p-6">
-      <PageHeader title="Upload photos" description="Add quadrat photos from a survey. Results count on the map right away; reviewers can correct them afterwards." />
+      <PageHeader title="Upload photos" description="Add quadrat photos from a survey. Results count on the map right away; you can correct or delete your own photos afterwards." />
       <Stepper step={step} />
 
       {busy && (

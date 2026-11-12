@@ -28,7 +28,6 @@ const SECTION: Record<string, string> = {
   images: "Photos",
   upload: "Upload photos",
   uploads: "My uploads",
-  review: "Review queue",
   about: "How it works",
 }
 
@@ -97,11 +96,14 @@ function DemoBadge() {
         <ul className="mt-2 space-y-1.5 text-muted-foreground">
           <li>
             <span className="text-foreground">Real:</span> survey photos, stations, dates and GPS from the 2024 CoralNet
-            survey, and the coral boxes from the frozen YOLOv8 detector.
+            survey, and for these photos every box, coral / not-coral decision, health class (LC, PB, DC, DCA) and outline,
+            which come from the trained pipeline.
           </li>
           <li>
-            <span className="text-foreground">Simulated:</span> the coral / not-coral filter and the health classes (LC, PB, DC,
-            DCA). The Stage 2 models are not trained yet.
+            <span className="text-foreground">Uploads:</span>{" "}
+            {apiConfigured
+              ? "classified by the same pipeline on the model server."
+              : "results are simulated, because no model server is connected."}
           </li>
         </ul>
       </PopoverContent>

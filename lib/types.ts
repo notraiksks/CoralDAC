@@ -24,11 +24,10 @@ export interface Detection {
   maskFallback?: boolean
   /** colony outline from SAM, polygon in 0..1 image coordinates (optional server field) */
   mask?: [number, number][]
-  /** set when a reviewer changed the model's class */
-  reviewed?: HealthClass | "OTHERS"
+  /** set when the uploader corrected the model's class */
+  corrected?: HealthClass | "OTHERS"
 }
 
-export type ImageStatus = "approved" | "pending" | "rejected"
 /** "none": uploaded without a location; the photo joins the map once a station is assigned */
 export type LocationSource = "station" | "exif" | "manual" | "none"
 
@@ -58,7 +57,6 @@ export interface ReefImage {
   width: number
   height: number
   camera: string
-  status: ImageStatus
   detections: Detection[]
   provenance: Provenance
 }
@@ -71,9 +69,6 @@ export interface Provenance {
   models: { detector: string; filter: string; classifier: string }
   /** true when Stage 2 output is simulated (no trained model / API yet) */
   simulated: boolean
-  review?: { by: string; at: string; decision: "approved" | "rejected"; reason?: string; note?: string }
 }
-
-export type Role = "viewer" | "contributor" | "reviewer"
 
 export type ClassCounts = Record<HealthClass, number>

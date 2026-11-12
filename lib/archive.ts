@@ -1,17 +1,18 @@
 /**
- * Demo archive built by scripts/build_demo_assets.py from real Pipeline-V2 survey photos.
- * Boxes are real detector output; the CORAL/OTHERS filter and health classes are simulated (raw.mock).
- * Swap this module for API calls once the FastAPI backend exists; the rest of the app only sees the types.
+ * Example archive: 42 real Pipeline-V2 survey photos (images by scripts/build_demo_assets.py). Their boxes, CORAL/OTHERS
+ * decisions, health classes and colony outlines are output of the final pipeline (Pipeline-V2 ops/tools/coraldac_demo_archive.py).
  */
 import raw from "./data/demo-archive.json"
 import type { Detection, ReefImage, Station } from "./types"
 
 export const DEMO_NOTE: string = raw.mockNote
 
-export const MODEL_VERSIONS = {
-  detector: "YOLOv8m · 5f0dbadf73 (frozen)",
-  filter: "ResNet50 CORAL/OTHERS · not trained yet",
-  classifier: "ResNet50 LC/PB/DC/DCA · not trained yet",
+type ModelVersions = { detector: string; filter: string; classifier: string }
+
+export const MODEL_VERSIONS: ModelVersions = (raw as { models?: ModelVersions }).models ?? {
+  detector: "YOLOv8m x3 combined (E3x)",
+  filter: "ResNet50 CORAL/OTHERS",
+  classifier: "ResNet50 background-gray LC/PB/DC/DCA",
 }
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
@@ -44,15 +45,14 @@ export const ARCHIVE_IMAGES: ReefImage[] = raw.images.map((img) => {
     width: img.width,
     height: img.height,
     camera: img.camera,
-    status: img.status as ReefImage["status"],
     detections: img.detections as Detection[],
     provenance: {
-      source: img.status === "pending" ? "upload" : "archive",
-      uploader: img.status === "pending" ? "Field team (demo)" : "CoralNet survey 2024",
-      uploadedAt: img.status === "pending" ? `${img.date}T16:00` : null,
+      source: "archive",
+      uploader: "CoralNet survey 2024",
+      uploadedAt: null,
       locationSource: "station",
       models: MODEL_VERSIONS,
-      simulated: true,
+      simulated: raw.mock,
     },
   }
 })

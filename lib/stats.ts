@@ -15,10 +15,10 @@ export interface StationSummary {
 export type HeatMetric = "perQuadrat" | "total"
 
 /**
- * Which photos count on the map and in the station statistics: every analyzed photo with a station that a reviewer has not
- * rejected (Rai, 2026-11-10: no review gate; reviewers correct or reject afterwards). Photos without a station wait for one.
+ * Which photos count on the map and in the station statistics: every analyzed photo with a station, at once (no curator,
+ * Rai, 2026-11-10 / 2026-11-12). Photos without a station wait for one; a photo deleted by its uploader is gone.
  */
-export const countsOnMap = (i: ReefImage) => i.status !== "rejected"
+export const countsOnMap = (i: ReefImage) => i.stationId !== null
 
 export function summarizeStations(stations: Station[], images: ReefImage[]): StationSummary[] {
   return stations.map((station) => {

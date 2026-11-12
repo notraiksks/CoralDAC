@@ -59,7 +59,7 @@ export function StationDetail({ id }: { id: string }) {
         title={station.name}
         description={
           <>
-            {station.depthM ? `${station.depthM} m` : station.depth} · {months.map(monthLabel).join(", ") || "no approved photos"} ·{" "}
+            {station.depthM ? `${station.depthM} m` : station.depth} · {months.map(monthLabel).join(", ") || "no photos"} ·{" "}
             <span className="tabular">{formatCoords(station.lat, station.lng)}</span>
           </>
         }
@@ -86,7 +86,7 @@ export function StationDetail({ id }: { id: string }) {
         <Card>
           <CardHeader>
             <CardTitle>Health classes</CardTitle>
-            <CardDescription>All approved quadrats</CardDescription>
+            <CardDescription>All quadrats</CardDescription>
           </CardHeader>
           <CardContent>
             <ClassBreakdown counts={s.totals} />

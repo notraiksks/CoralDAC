@@ -2,25 +2,21 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ClipboardCheck, FolderUp, Info, Map, MapPin, Upload } from "lucide-react"
+import { FolderUp, Info, Map, MapPin, Upload } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
   SidebarSeparator,
 } from "@/components/ui/sidebar"
 import { Logo } from "@/components/logo"
-import { RoleSwitcher } from "@/components/role-switcher"
-import { ROLE_META, useStore } from "@/lib/store"
 
 const EXPLORE = [
   { href: "/", label: "Reef map", icon: Map },
@@ -29,16 +25,12 @@ const EXPLORE = [
 
 export function AppSidebar() {
   const pathname = usePathname()
-  const { role, images } = useStore()
-  const can = ROLE_META[role].can
-  const pending = images.filter((i) => i.status === "pending").length
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href))
 
   const work = [
-    can.upload && { href: "/upload", label: "Upload photos", icon: Upload },
-    can.upload && { href: "/uploads", label: "My uploads", icon: FolderUp },
-    can.review && { href: "/review", label: "Review queue", icon: ClipboardCheck, badge: pending },
-  ].filter(Boolean) as { href: string; label: string; icon: typeof Map; badge?: number }[]
+    { href: "/upload", label: "Upload photos", icon: Upload },
+    { href: "/uploads", label: "My uploads", icon: FolderUp },
+  ]
 
   return (
     <Sidebar collapsible="icon">
@@ -86,7 +78,6 @@ export function AppSidebar() {
                         <item.icon />
                         <span>{item.label}</span>
                       </SidebarMenuButton>
-                      {!!item.badge && <SidebarMenuBadge className="tabular">{item.badge}</SidebarMenuBadge>}
                     </SidebarMenuItem>
                   ))}
                 </SidebarMenu>
@@ -109,9 +100,6 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter>
-        <RoleSwitcher />
-      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   )

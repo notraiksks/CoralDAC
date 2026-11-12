@@ -12,9 +12,9 @@ export const CLASS_META: Record<HealthClass | "OTHERS", { label: string; hint: s
 
 export const emptyCounts = (): ClassCounts => ({ LC: 0, PB: 0, DC: 0, DCA: 0 })
 
-/** The class a detection finally counts as (reviewer override first). */
+/** The class a detection finally counts as (the uploader's correction first). */
 export function finalClass(d: Detection): HealthClass | "OTHERS" {
-  if (d.reviewed) return d.reviewed
+  if (d.corrected) return d.corrected
   if (d.filter === "OTHERS" || !d.health) return "OTHERS"
   return d.health
 }

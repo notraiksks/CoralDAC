@@ -21,18 +21,19 @@ import {
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { ClassBadge, ClassBreakdown, ClassDot } from "@/components/class-ui"
 import { DetectionViewer } from "@/components/image/detection-viewer"
-import { StatusBadge } from "@/components/status-badge"
-import { stationById } from "@/lib/archive"
+import { DeletePhotoButton } from "@/components/upload/delete-photo"
+import { STATIONS, stationById } from "@/lib/archive"
 import { CLASS_META, countClasses, finalClass, HEALTH_CLASSES } from "@/lib/classes"
 import { exportDetectionsCsv } from "@/lib/csv"
 import { formatCoords } from "@/lib/geo"
-import { ROLE_META, useStore } from "@/lib/store"
+import { useStore } from "@/lib/store"
 import type { Detection, HealthClass, ReefImage } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -44,7 +45,7 @@ export function formatDate(d: string) {
 }
 
 export function ImageDetail({ id }: { id: string }) {
-  const { ready, getImage, images, role, updateImage } = useStore()
+  const { ready, getImage, images, isOwn, updateImage } = useStore()
   const docMode = useDocMode()
   const router = useRouter()
   const img = getImage(id)
@@ -57,8 +58,8 @@ export function ImageDetail({ id }: { id: string }) {
 
   // neighbours within the same station, in archive order
   const siblings = React.useMemo(
-    () => (img ? images.filter((i) => i.stationId === img.stationId && i.status === img.status) : []),
-    [images, img]
+    () => (img ? images.filter((i) => i.stationId === img.stationId && isOwn(i) === isOwn(img)) : []),
+    [images, img, isOwn]
   )
   const idx = siblings.findIndex((s) => s.id === id)
   const prev = idx > 0 ? siblings[idx - 1] : null
@@ -94,13 +95,27 @@ export function ImageDetail({ id }: { id: string }) {
   const visible = img.detections.filter((d) => d.detConf >= minConf && (showOthers || finalClass(d) !== "OTHERS"))
   const others = img.detections.filter((d) => finalClass(d) === "OTHERS").length
   const active = hover ?? picked
-  const canEdit = ROLE_META[role].can.review
+  const canEdit = isOwn(img)
 
   const setClass = (det: Detection, cls: HealthClass | "OTHERS") => {
     const modelClass = det.filter === "OTHERS" || !det.health ? "OTHERS" : det.health
-    const detections = img.detections.map((d) => (d.id === det.id ? { ...d, reviewed: cls === modelClass ? undefined : cls } : d))
+    const detections = img.detections.map((d) => (d.id === det.id ? { ...d, corrected: cls === modelClass ? undefined : cls } : d))
     updateImage({ ...img, detections })
     toast.success(`${det.id} set to ${CLASS_META[cls].label.toLowerCase()}`)
+  }
+
+  const setStation = (sid: string) => {
+    const st = stationById(sid)
+    if (!st) return
+    const keepGps = img.provenance.locationSource === "exif" || img.provenance.locationSource === "manual"
+    updateImage({
+      ...img,
+      stationId: st.id,
+      lat: keepGps ? img.lat : st.lat,
+      lng: keepGps ? img.lng : st.lng,
+      provenance: { ...img.provenance, locationSource: keepGps ? img.provenance.locationSource : "station" },
+    })
+    toast.success(`Station set to ${st.name}`, { description: "The photo now counts on the map." })
   }
 
   const pick = (did: string) => {
@@ -119,7 +134,7 @@ export function ImageDetail({ id }: { id: string }) {
             {img.file} · {formatDate(img.date)}
           </p>
         </div>
-        <StatusBadge status={img.status} />
+        {canEdit && <DeletePhotoButton img={img} onDeleted={() => router.push("/uploads")} />}
         {img.provenance.simulated && !docMode && (
           <Tooltip>
             <TooltipTrigger render={<Badge variant="outline" className="border-dashed text-muted-foreground" />}>
@@ -234,10 +249,10 @@ export function ImageDetail({ id }: { id: string }) {
                         <td className="py-1.5">
                           <span className="inline-flex items-center gap-1.5">
                             <ClassBadge cls={cls} />
-                            {d.reviewed && (
+                            {d.corrected && (
                               <Tooltip>
-                                <TooltipTrigger render={<Pencil className="size-3.5 text-muted-foreground" aria-label="Edited by reviewer" />} />
-                                <TooltipContent>Changed by a reviewer</TooltipContent>
+                                <TooltipTrigger render={<Pencil className="size-3.5 text-muted-foreground" aria-label="Corrected by the uploader" />} />
+                                <TooltipContent>Corrected by the uploader</TooltipContent>
                               </Tooltip>
                             )}
                           </span>
@@ -280,7 +295,20 @@ export function ImageDetail({ id }: { id: string }) {
             <CardContent>
               <dl className="grid grid-cols-[7.5rem_1fr] gap-x-3 gap-y-1.5 text-sm">
                 <Row k="Station">
-                  {station ? (
+                  {canEdit ? (
+                    <Select value={img.stationId ?? ""} onValueChange={(v) => setStation(String(v))}>
+                      <SelectTrigger size="sm" className="h-7 w-full" aria-label="Station of this photo">
+                        <SelectValue>{() => station?.name ?? "Choose a station"}</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STATIONS.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : station ? (
                     <Link className="underline-offset-2 hover:underline" href={`/stations/${station.id}`}>
                       {station.name}
                     </Link>
@@ -296,12 +324,6 @@ export function ImageDetail({ id }: { id: string }) {
                 </Row>
                 <Row k="Location from">{LOCATION_SOURCE[img.provenance.locationSource]}</Row>
                 <Row k="Uploaded by">{img.provenance.uploader}</Row>
-                {img.provenance.review && (
-                  <Row k="Review">
-                    {img.provenance.review.decision === "approved" ? "Approved" : "Rejected"} by {img.provenance.review.by}
-                    {img.provenance.review.reason ? ` · ${img.provenance.review.reason}` : ""}
-                  </Row>
-                )}
               </dl>
               <details className="mt-3 text-sm">
                 <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Model versions</summary>

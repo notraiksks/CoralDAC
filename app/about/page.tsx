@@ -20,7 +20,7 @@ export default function AboutPage() {
     <div className="mx-auto w-full max-w-5xl space-y-8 p-4 md:p-6">
       <PageHeader
         title="How it works"
-        description="CoralDAC turns photo-quadrat surveys into a map of coral health: two models read each photo, the counts are added up per monitoring station, and a reviewer can correct or reject a photo afterwards."
+        description="CoralDAC turns photo-quadrat surveys into a map of coral health: two models read each photo, the counts are added up per monitoring station, and the person who uploaded a photo can correct or delete it."
       />
 
       <section aria-labelledby="pipeline" className="space-y-3">
@@ -76,8 +76,8 @@ export default function AboutPage() {
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
             <p>
-              Each photo is one quadrat. Its colonies are counted per class and added to its station as soon as it is analyzed; photos a reviewer
-              <span className="text-foreground">rejects</span> are taken out, and photos without a station wait until one is assigned.
+              Each photo is one quadrat. Its colonies are counted per class and added to its station as soon as it is analyzed, with no review step. Photos without a station wait until
+              their uploader chooses one; a photo its uploader <span className="text-foreground">deletes</span> is taken out.
             </p>
             <p>
               For counts, <span className="text-foreground">Per quadrat</span> (default) divides a station&apos;s total by its number of photos, so stations surveyed
@@ -100,7 +100,7 @@ export default function AboutPage() {
           <CardContent className="space-y-2 text-sm text-muted-foreground">
             <p>GPS is recorded per station, not per photo, so the map shows station-level patterns, not patchiness within a transect.</p>
             <p>Markers that would overlap are moved apart on screen and linked to their GPS point with a dashed line. This is for legibility only.</p>
-            <p>Boxes, not outlines: the models do not measure colony area or percent cover.</p>
+            <p>Colony outlines are drawn for display and for the health classifier; the app does not measure colony area or percent cover.</p>
           </CardContent>
         </Card>
       </section>
@@ -114,12 +114,13 @@ export default function AboutPage() {
             <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[10rem_1fr]">
               <dt className="text-muted-foreground">Photos and stations</dt>
               <dd>Real: 2024 CoralNet photo-quadrat survey, Puerto Galera (Coral Garden, Giant Clam, Harka Piloto, Sapangan).</dd>
-              <dt className="text-muted-foreground">Coral boxes</dt>
-              <dd>Real output of the frozen detector ({MODEL_VERSIONS.detector}).</dd>
-              <dt className="text-muted-foreground">Filter and health classes</dt>
-              <dd>Simulated until the Stage 2 models are trained on the biologists&apos; labels.</dd>
-              <dt className="text-muted-foreground">Uploads and reviews</dt>
-              <dd>Kept in this browser only. Use the role menu at the bottom of the sidebar to reset.</dd>
+              <dt className="text-muted-foreground">Boxes, filter and health classes</dt>
+              <dd>
+                Output of the trained pipeline for the example photos: {MODEL_VERSIONS.detector}; {MODEL_VERSIONS.filter};{" "}
+                {MODEL_VERSIONS.classifier}. Not checked against expert labels on this page.
+              </dd>
+              <dt className="text-muted-foreground">Uploads</dt>
+              <dd>Kept in this browser only; only this browser can correct or delete them (My uploads).</dd>
             </dl>
           </CardContent>
         </Card>

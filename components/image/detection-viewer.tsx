@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
 /**
  * Photo with detection boxes drawn in an SVG overlay (normalized coordinates, so it scales with the image).
  * Coral boxes take their health-class color; boxes the filter rejected as OTHERS are dashed gray.
+ * Coral colonies with a SAM outline from the model server (d.mask) also get a thin outline in the same color.
  */
 export function DetectionViewer({
   image,
@@ -43,8 +44,19 @@ export function DetectionViewer({
             const active = hoverId === d.id
             const dim = hoverId != null && !active
             return (
+              <g key={d.id}>
+              {cls !== "OTHERS" && d.mask && d.mask.length > 2 && (
+                <polygon
+                  points={d.mask.map(([px, py]) => `${px * ratio},${py}`).join(" ")}
+                  fill="none"
+                  stroke={CLASS_META[cls].color}
+                  strokeOpacity={dim ? 0.3 : 0.9}
+                  strokeWidth={active ? 2.5 : 1.5}
+                  vectorEffect="non-scaling-stroke"
+                  style={{ pointerEvents: "none" }}
+                />
+              )}
               <rect
-                key={d.id}
                 x={x * ratio}
                 y={y}
                 width={w * ratio}
@@ -63,6 +75,7 @@ export function DetectionViewer({
                 onMouseLeave={() => onHover?.(null)}
                 onClick={() => onPick?.(d.id)}
               />
+              </g>
             )
           })}
         </svg>

@@ -1,22 +1,18 @@
 "use client"
 
 /**
- * Client-side state until the backend exists:
- * - uploads (photo blob + record) live in IndexedDB, so they survive a refresh
- * - review decisions and class edits on archive images live in localStorage
- * - the demo role lives in localStorage
+ * Client-side state until the shared backend exists. No curator (Rai, 2026-11-12, V2-0361): uploads count on the map at
+ * once, and only the person who uploaded a photo may correct its classes or delete it. Here "the uploader" is this browser:
+ * uploads (photo blob + record) live in IndexedDB, so they survive a refresh. The example photos cannot be edited.
  */
 import * as React from "react"
 import { ARCHIVE_IMAGES } from "./archive"
-import type { ReefImage, Role } from "./types"
+import type { ReefImage } from "./types"
 
 const DB_NAME = "coraldac"
 const STORE = "uploads"
-const OVERRIDES_KEY = "coraldac-overrides-v2"
-const ROLE_KEY = "coraldac-role"
 
 type UploadRecord = Omit<ReefImage, "src" | "thumb"> & { blob: Blob }
-type Override = Pick<ReefImage, "status" | "detections" | "provenance">
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -36,43 +32,31 @@ async function idb<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRe
   })
 }
 
-function readOverrides(): Record<string, Override> {
-  try {
-    return JSON.parse(localStorage.getItem(OVERRIDES_KEY) ?? "{}")
-  } catch {
-    return {}
-  }
-}
-
 interface StoreValue {
   ready: boolean
   images: ReefImage[]
-  role: Role
-  setRole: (r: Role) => void
   getImage: (id: string) => ReefImage | undefined
+  /** true for photos uploaded from this browser: only their uploader may correct or delete them */
+  isOwn: (img: ReefImage) => boolean
   addUploads: (items: { image: ReefImage; file: File }[]) => Promise<void>
   updateImage: (img: ReefImage) => void
-  resetDemo: () => Promise<void>
+  removeUpload: (id: string) => Promise<void>
+  clearUploads: () => Promise<void>
 }
 
 const StoreContext = React.createContext<StoreValue | null>(null)
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
-  const [archive, setArchive] = React.useState<ReefImage[]>(ARCHIVE_IMAGES)
   const [uploads, setUploads] = React.useState<ReefImage[]>([])
-  const [role, setRoleState] = React.useState<Role>("contributor")
   const [ready, setReady] = React.useState(false)
 
   React.useEffect(() => {
     let urls: string[] = []
-    const ov = readOverrides()
-    const savedRole = (() => {
-      try {
-        return localStorage.getItem(ROLE_KEY) as Role | null
-      } catch {
-        return null
-      }
-    })()
+    try {
+      // class edits and review decisions on the example photos from the earlier review mode are no longer used
+      localStorage.removeItem("coraldac-overrides-v2")
+      localStorage.removeItem("coraldac-role")
+    } catch {}
     idb<UploadRecord[]>("readonly", (s) => s.getAll())
       .catch(() => [] as UploadRecord[])
       .then((recs) => {
@@ -82,9 +66,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           return { ...rest, src: url, thumb: url } as ReefImage
         })
         loaded.sort((a, b) => (b.provenance.uploadedAt ?? "").localeCompare(a.provenance.uploadedAt ?? ""))
-        setArchive(ARCHIVE_IMAGES.map((img) => (ov[img.id] ? { ...img, ...ov[img.id] } : img)))
         setUploads(loaded)
-        if (savedRole) setRoleState(savedRole)
         setReady(true)
       })
     return () => {
@@ -93,16 +75,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  const images = React.useMemo(() => [...uploads, ...archive], [uploads, archive])
-
-  const setRole = React.useCallback((r: Role) => {
-    setRoleState(r)
-    try {
-      localStorage.setItem(ROLE_KEY, r)
-    } catch {}
-  }, [])
+  const images = React.useMemo(() => [...uploads, ...ARCHIVE_IMAGES], [uploads])
 
   const getImage = React.useCallback((id: string) => images.find((i) => i.id === id), [images])
+
+  const isOwn = React.useCallback((img: ReefImage) => uploads.some((u) => u.id === img.id), [uploads])
 
   const addUploads = React.useCallback(async (items: { image: ReefImage; file: File }[]) => {
     setUploads((prev) => [...items.map((i) => i.image), ...prev])
@@ -119,41 +96,40 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const updateImage = React.useCallback((img: ReefImage) => {
-    if (img.provenance.source === "upload" && !ARCHIVE_IMAGES.some((a) => a.id === img.id)) {
-      setUploads((prev) => prev.map((p) => (p.id === img.id ? img : p)))
-      void (async () => {
-        try {
-          const rec = await idb<UploadRecord | undefined>("readonly", (s) => s.get(img.id))
-          if (!rec) return
-          const { src: _s, thumb: _t, ...rest } = img
-          void _s
-          void _t
-          await idb("readwrite", (s) => s.put({ ...rest, blob: rec.blob } satisfies UploadRecord))
-        } catch {}
-      })()
-      return
-    }
-    setArchive((prev) => prev.map((p) => (p.id === img.id ? img : p)))
+    setUploads((prev) => prev.map((p) => (p.id === img.id ? img : p)))
+    void (async () => {
+      try {
+        const rec = await idb<UploadRecord | undefined>("readonly", (s) => s.get(img.id))
+        if (!rec) return
+        const { src: _s, thumb: _t, ...rest } = img
+        void _s
+        void _t
+        await idb("readwrite", (s) => s.put({ ...rest, blob: rec.blob } satisfies UploadRecord))
+      } catch {}
+    })()
+  }, [])
+
+  const removeUpload = React.useCallback(async (id: string) => {
+    setUploads((prev) => {
+      prev.filter((p) => p.id === id).forEach((p) => URL.revokeObjectURL(p.src))
+      return prev.filter((p) => p.id !== id)
+    })
     try {
-      const ov = readOverrides()
-      ov[img.id] = { status: img.status, detections: img.detections, provenance: img.provenance }
-      localStorage.setItem(OVERRIDES_KEY, JSON.stringify(ov))
+      await idb("readwrite", (s) => s.delete(id))
     } catch {}
   }, [])
 
-  const resetDemo = React.useCallback(async () => {
+  const clearUploads = React.useCallback(async () => {
     try {
-      localStorage.removeItem(OVERRIDES_KEY)
       await idb("readwrite", (s) => s.clear())
     } catch {}
     uploads.forEach((u) => URL.revokeObjectURL(u.src))
     setUploads([])
-    setArchive(ARCHIVE_IMAGES)
   }, [uploads])
 
   const value = React.useMemo(
-    () => ({ ready, images, role, setRole, getImage, addUploads, updateImage, resetDemo }),
-    [ready, images, role, setRole, getImage, addUploads, updateImage, resetDemo]
+    () => ({ ready, images, getImage, isOwn, addUploads, updateImage, removeUpload, clearUploads }),
+    [ready, images, getImage, isOwn, addUploads, updateImage, removeUpload, clearUploads]
   )
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
 }
@@ -162,10 +138,4 @@ export function useStore() {
   const ctx = React.useContext(StoreContext)
   if (!ctx) throw new Error("useStore must be used inside <StoreProvider>")
   return ctx
-}
-
-export const ROLE_META: Record<Role, { label: string; can: { upload: boolean; review: boolean } }> = {
-  viewer: { label: "Viewer", can: { upload: false, review: false } },
-  contributor: { label: "Contributor", can: { upload: true, review: false } },
-  reviewer: { label: "Reviewer", can: { upload: true, review: true } },
 }

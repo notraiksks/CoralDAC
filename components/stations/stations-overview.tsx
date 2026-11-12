@@ -27,7 +27,7 @@ export function StationsOverview() {
     <div className="mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6">
       <PageHeader
         title="Stations"
-        description="Coral colonies counted per health class at each monitoring station, from approved quadrat photos only."
+        description="Coral colonies counted per health class at each monitoring station, from every analyzed quadrat photo."
         actions={
           <Button variant="outline" onClick={() => exportImagesCsv(images.filter(countsOnMap), "coraldac-images.csv")}>
             <Download /> Export counts (CSV)
@@ -37,7 +37,7 @@ export function StationsOverview() {
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat label="Stations" value={all.stations} hint="Puerto Galera, Oriental Mindoro" />
-        <Stat label="Approved quadrats" value={all.images} />
+        <Stat label="Quadrats" value={all.images} />
         <Stat label="Coral colonies" value={all.colonies} hint={`${fmt1(all.colonies / Math.max(1, all.images))} per quadrat`} />
         <Stat label="Affected coral" value={`${Math.round(impactedShare(all.totals) * 100)}%`} hint="PB+DC+DCA" />
       </div>
@@ -46,7 +46,7 @@ export function StationsOverview() {
         <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
           <div>
             <CardTitle>Health classes by station</CardTitle>
-            <CardDescription>{metric === "perQuadrat" ? "Mean colonies per quadrat photo" : "Total colonies across all approved photos"}</CardDescription>
+            <CardDescription>{metric === "perQuadrat" ? "Mean colonies per quadrat photo" : "Total colonies across all photos"}</CardDescription>
           </div>
           <ToggleGroup variant="outline" size="sm" spacing={0} value={[metric]} onValueChange={(v) => v[0] && setMetric(v[0] as HeatMetric)}>
             <ToggleGroupItem value="perQuadrat">Per quadrat</ToggleGroupItem>
