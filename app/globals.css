@@ -148,6 +148,20 @@
   html {
     @apply h-full;
   }
+  /* Tailwind v4 leaves buttons with the default arrow; show the hand on everything clickable */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"]:not([aria-disabled="true"]),
+  [role="menuitem"],
+  [role="option"],
+  summary,
+  label[for] {
+    cursor: pointer;
+  }
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
   body {
     @apply min-h-full bg-background text-foreground antialiased;
     font-feature-settings: "cv11", "ss01";

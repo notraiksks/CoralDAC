@@ -23,12 +23,18 @@ export function AuthForms({ onDone }: { onDone?: () => void }) {
   const [email, setEmail] = React.useState("")
   const [busy, setBusy] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  const usernameOk = /^[a-z0-9._-]{3,30}$/.test(username.trim().toLowerCase())
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setBusy(true)
     setError(null)
-    const err = tab === "signin" ? await signIn(username, password) : await signUp(username, password, email)
+    let err: string | null
+    try {
+      err = tab === "signin" ? await signIn(username, password) : await signUp(username, password, email)
+    } catch (x) {
+      err = x instanceof Error ? x.message : "Could not reach the sign-in service."
+    }
     setBusy(false)
     if (err) setError(err)
     else onDone?.()
@@ -46,7 +52,6 @@ export function AuthForms({ onDone }: { onDone?: () => void }) {
           id={`${tab}-pass`}
           type="password"
           required
-          minLength={tab === "signup" ? 8 : undefined}
           autoComplete={tab === "signup" ? "new-password" : "current-password"}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -71,7 +76,7 @@ export function AuthForms({ onDone }: { onDone?: () => void }) {
         <form onSubmit={submit} className="space-y-3 pt-2">
           {fields}
           {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button type="submit" className="w-full" disabled={busy || !username || !password}>
+          <Button type="submit" className="w-full" disabled={busy}>
             {busy ? <Loader2 className="animate-spin" /> : <LogIn />} Sign in
           </Button>
         </form>
@@ -86,8 +91,16 @@ export function AuthForms({ onDone }: { onDone?: () => void }) {
             <Input id="signup-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
             <p className="text-xs text-muted-foreground">Only so the project team can reach you; no e-mails are sent.</p>
           </div>
+          <ul className="space-y-0.5 text-xs text-muted-foreground">
+            <li className={usernameOk ? "text-foreground" : undefined}>
+              {usernameOk ? "✓" : "•"} Username: 3–30 characters (letters, numbers, . _ -)
+            </li>
+            <li className={password.length >= 8 ? "text-foreground" : undefined}>
+              {password.length >= 8 ? "✓" : "•"} Password: at least 8 characters
+            </li>
+          </ul>
           {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button type="submit" className="w-full" disabled={busy || !username || password.length < 8}>
+          <Button type="submit" className="w-full" disabled={busy}>
             {busy ? <Loader2 className="animate-spin" /> : <UserPlus />} Create account
           </Button>
         </form>
