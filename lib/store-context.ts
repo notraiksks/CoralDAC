@@ -36,8 +36,8 @@ export interface StoreValue {
   updateImage: (img: ReefImage) => void
   removeUpload: (id: string) => Promise<void>
   clearUploads: () => Promise<void>
-  /** sends a sign-in link; returns an error message or null */
-  signIn: (email: string, next?: string) => Promise<string | null>
+  /** signs in with an account made by the project (username + password, no e-mail); returns an error message or null */
+  signIn: (username: string, password: string) => Promise<string | null>
   signOut: () => Promise<void>
 }
 

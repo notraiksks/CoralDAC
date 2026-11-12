@@ -11,6 +11,9 @@ import { StoreContext, type StoreValue, type UploadMeta } from "./store-context"
 import { supabaseBrowser } from "./supabase/client"
 import type { Detection, HealthClass, LocationSource, PhotoStatus, ReefImage } from "./types"
 
+/** login names are e-mail addresses on this placeholder domain (never mailed) */
+export const ACCOUNT_DOMAIN = "coraldac.local"
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function toDetection(r: any): Detection {
   const health = r.filter === "OTHERS" ? undefined : ((r.health ?? undefined) as HealthClass | undefined)
@@ -177,13 +180,15 @@ export function RemoteStoreProvider({ children }: { children: React.ReactNode })
     [load]
   )
 
+  // Accounts are created by the project in Supabase (no sign-up, no e-mails, V2-0376); a username "demo" is the login
+  // e-mail "demo@coraldac.local". Typing a full address also works.
   const signIn = React.useCallback(
-    async (email: string, next = "/upload") => {
-      const { error } = await sb.auth.signInWithOtp({
-        email,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
-      })
-      return error ? error.message : null
+    async (username: string, password: string) => {
+      const u = username.trim().toLowerCase()
+      const email = u.includes("@") ? u : `${u}@${ACCOUNT_DOMAIN}`
+      const { error } = await sb.auth.signInWithPassword({ email, password })
+      if (!error) return null
+      return /invalid login credentials/i.test(error.message) ? "Wrong username or password." : error.message
     },
     [sb]
   )

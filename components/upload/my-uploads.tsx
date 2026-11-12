@@ -49,7 +49,7 @@ export function MyUploads() {
     return (
       <div className="mx-auto w-full max-w-6xl space-y-5 p-4 md:p-6">
         <PageHeader title="My uploads" description="Sign in to see the photos you uploaded." />
-        <SignInCard next="/uploads" title="Sign in to see your uploads" />
+        <SignInCard title="Sign in to see your uploads" />
       </div>
     )
 
