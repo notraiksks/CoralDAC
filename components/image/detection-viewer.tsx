@@ -18,14 +18,17 @@ export function DetectionViewer({
   hoverId,
   onHover,
   onPick,
+  reserveRem = 12,
   className,
 }: {
-  image: Pick<ReefImage, "src" | "file" | "width" | "height">
+  image: Pick<ReefImage, "src" | "file" | "width" | "height"> & { thumb?: string }
   detections: Detection[]
   showBoxes?: boolean
   hoverId?: string | null
   onHover?: (id: string | null) => void
   onPick?: (id: string) => void
+  /** viewport height (rem) kept free for the page chrome around the photo; smaller = larger photo */
+  reserveRem?: number
   className?: string
 }) {
   const ratio = image.width / image.height
@@ -33,7 +36,15 @@ export function DetectionViewer({
     <div
       className={cn("relative mx-auto w-full overflow-hidden rounded-lg bg-muted", className)}
       // fit the whole photo in the viewport height on desktop
-      style={{ aspectRatio: ratio, maxWidth: `max(20rem, calc((100svh - 12rem) * ${ratio}))` }}
+      style={{
+        aspectRatio: ratio,
+        maxWidth: `max(20rem, calc((100svh - ${reserveRem}rem) * ${ratio}))`,
+        // the thumbnail (already cached from the lists) fills the frame until the full photo arrives
+        backgroundImage: image.thumb ? `url("${image.thumb}")` : undefined,
+        backgroundSize: "contain",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
     >
       <Image src={image.src} alt={`Quadrat photo ${image.file}`} fill sizes="(min-width: 1024px) 60vw, 100vw" className="object-contain" unoptimized priority />
       {showBoxes && (

@@ -8,6 +8,7 @@
  * outlines load on its page (ensureDetail). Live updates refresh only the photo that changed.
  */
 import * as React from "react"
+import { toast } from "sonner"
 import { ARCHIVE_IMAGES, MODEL_VERSIONS } from "./archive"
 import { countClasses, finalClass } from "./classes"
 import { useArchiveMasks, withMasks } from "./details"
@@ -84,10 +85,18 @@ export function RemoteStoreProvider({ children }: { children: React.ReactNode })
   const [user, setUser] = React.useState<{ id: string; email: string | null } | null>(null)
   const userId = user?.id ?? null
   const detailIds = React.useRef(new Set<string>())
+  /** bumped by the "Retry" button of the load-error message: reloads the list and reconnects live updates */
+  const [retry, setRetry] = React.useState(0)
 
   const load = React.useCallback(async () => {
     const { data, error } = await sb.from(SUMMARY).select("*").eq("source", "upload").order("created_at", { ascending: false })
     if (!error) setRows((data ?? []).map((r) => toImage(r, userId)))
+    else
+      toast.error("Could not load the shared photos", {
+        id: "coraldac-load",
+        description: "The example photos are shown. Check your connection.",
+        action: { label: "Retry", onClick: () => setRetry((n) => n + 1) },
+      })
     setReady(true)
   }, [sb, userId])
 
@@ -95,6 +104,7 @@ export function RemoteStoreProvider({ children }: { children: React.ReactNode })
     async (id: string) => {
       const { data, error } = await sb.from("detections").select("*").eq("photo_id", id).order("label")
       if (!error) setDetails((all) => ({ ...all, [id]: (data ?? []).map(toDetection) }))
+      else detailIds.current.delete(id) // asked again the next time the photo is opened
     },
     [sb]
   )
@@ -144,11 +154,22 @@ export function RemoteStoreProvider({ children }: { children: React.ReactNode })
       .on("postgres_changes", { event: "*", schema: "public", table: "photos" }, (p: any) => later(p.new?.id ?? p.old?.id))
       .on("postgres_changes", { event: "*", schema: "public", table: "detections" }, (p: any) => later(p.new?.photo_id ?? p.old?.photo_id))
       .subscribe()
+    // live updates are missed while the tab sleeps or the network drops: re-read the list when it comes back
+    let hiddenAt = 0
+    const onVisible = () => {
+      if (document.visibilityState === "hidden") hiddenAt = Date.now()
+      else if (hiddenAt && Date.now() - hiddenAt > 120_000) void load()
+    }
+    const onOnline = () => void load()
+    document.addEventListener("visibilitychange", onVisible)
+    window.addEventListener("online", onOnline)
     return () => {
       timers.forEach((t) => clearTimeout(t))
+      document.removeEventListener("visibilitychange", onVisible)
+      window.removeEventListener("online", onOnline)
       void sb.removeChannel(ch)
     }
-  }, [sb, load, refreshPhoto])
+  }, [sb, load, refreshPhoto, retry])
 
   const done = React.useMemo(() => rows.filter((r) => r.status === "done"), [rows])
   const images = React.useMemo(() => [...done, ...ARCHIVE_IMAGES], [done])
@@ -197,22 +218,34 @@ export function RemoteStoreProvider({ children }: { children: React.ReactNode })
       )
       if (img.detections.length) setDetails((all) => ({ ...all, [img.id]: img.detections }))
       void (async () => {
+        let failed = false
         if (prevRow.stationId !== img.stationId || prevRow.lat !== img.lat || prevRow.lng !== img.lng ||
             prevRow.provenance.locationSource !== img.provenance.locationSource) {
-          await sb.from("photos").update({
+          const { error } = await sb.from("photos").update({
             station_id: img.stationId, lat: img.lat, lng: img.lng, location_source: img.provenance.locationSource,
           }).eq("id", img.id)
+          if (error) failed = true
         }
-        if (!prevDets.length) return
-        const before = new Map(prevDets.map((d) => [d.dbId, d.corrected ?? null]))
-        await Promise.all(
-          img.detections
-            .filter((d) => d.dbId && before.has(d.dbId) && before.get(d.dbId) !== (d.corrected ?? null))
-            .map((d) => sb.from("detections").update({ corrected: d.corrected ?? null }).eq("id", d.dbId!))
-        )
-      })()
+        if (prevDets.length) {
+          const before = new Map(prevDets.map((d) => [d.dbId, d.corrected ?? null]))
+          const res = await Promise.all(
+            img.detections
+              .filter((d) => d.dbId && before.has(d.dbId) && before.get(d.dbId) !== (d.corrected ?? null))
+              .map((d) => sb.from("detections").update({ corrected: d.corrected ?? null }).eq("id", d.dbId!))
+          )
+          if (res.some((r) => r.error)) failed = true
+        }
+        if (failed) {
+          // undo the optimistic change with what the database really holds
+          toast.error("The change was not saved", { description: "Check your connection and try again." })
+          void refreshPhoto(img.id)
+        }
+      })().catch(() => {
+        toast.error("The change was not saved", { description: "Check your connection and try again." })
+        void refreshPhoto(img.id)
+      })
     },
-    [rows, details, sb, userId]
+    [rows, details, sb, userId, refreshPhoto]
   )
 
   // optimistic delete: gone from the page at once, back if the server refuses
