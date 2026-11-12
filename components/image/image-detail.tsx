@@ -52,8 +52,6 @@ export function ImageDetail({ id }: { id: string }) {
   const router = useRouter()
   const img = getImage(id)
   const [showBoxes, setShowBoxes] = React.useState(true)
-  // not-coral detections are hidden until asked for: the page is about the coral colonies
-  const [showOthers, setShowOthers] = React.useState(false)
   const [minConf, setMinConf] = React.useState(0)
   const [hover, setHover] = React.useState<string | null>(null)
   const [picked, setPicked] = React.useState<string | null>(null)
@@ -107,8 +105,10 @@ export function ImageDetail({ id }: { id: string }) {
 
   const station = stationById(img.stationId)
   const counts = countClasses(img.detections)
+  // Detections the filter rejected as not coral are not shown (Rai, V2-0385): the page is about the coral colonies.
+  // Exception: the uploader still sees them on their own photo, otherwise a wrong "not coral" could never be corrected.
+  const showOthers = isOwn(img)
   const visible = img.detections.filter((d) => d.detConf >= minConf && (showOthers || finalClass(d) !== "OTHERS"))
-  const others = img.detections.filter((d) => finalClass(d) === "OTHERS").length
   const active = hover ?? picked
   const canEdit = isOwn(img)
 
@@ -180,9 +180,6 @@ export function ImageDetail({ id }: { id: string }) {
               <Switch checked={showBoxes} onCheckedChange={setShowBoxes} /> Boxes
               <kbd className="rounded border px-1 text-[11px] text-muted-foreground">B</kbd>
             </Label>
-            <Label className={cn("gap-2 text-sm font-normal transition-opacity", !showOthers && "text-muted-foreground opacity-60 hover:opacity-100")}>
-              <Switch checked={showOthers} onCheckedChange={setShowOthers} disabled={others === 0} /> Not coral ({others})
-            </Label>
             <div className="flex min-w-56 flex-1 items-center gap-3">
               <span className="text-sm whitespace-nowrap text-muted-foreground">Detector confidence ≥</span>
               <Slider
@@ -204,9 +201,11 @@ export function ImageDetail({ id }: { id: string }) {
                 <ClassDot cls={k} /> {CLASS_META[k].label}
               </span>
             ))}
-            <span className={cn("inline-flex items-center gap-1.5 transition-opacity", !showOthers && "opacity-50")}>
-              <span className="inline-block h-0 w-3 border-t-2 border-dashed border-others" /> Not coral ({showOthers ? "shown" : "hidden"})
-            </span>
+            {showOthers && (
+              <span className="inline-flex items-center gap-1.5">
+                <span className="inline-block h-0 w-3 border-t-2 border-dashed border-others" /> Not coral (only you see these)
+              </span>
+            )}
           </div>
         </div>
 
@@ -289,8 +288,7 @@ export function ImageDetail({ id }: { id: string }) {
         <CardHeader className="flex flex-row flex-wrap items-center gap-x-3 gap-y-1">
           <CardTitle>Detections</CardTitle>
           <span className="tabular text-xs text-muted-foreground">
-            {visible.length} of {img.detections.length} shown
-            {!showOthers && others > 0 ? ` · ${others} not coral hidden` : ""}
+            {visible.length} {visible.length === 1 ? "colony" : "colonies"}
           </span>
           <span className="ml-auto hidden text-xs text-muted-foreground sm:inline">
             <abbr className="no-underline" title="Confidence of the health classifier (or of the filter for not coral)">

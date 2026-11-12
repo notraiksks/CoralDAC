@@ -20,6 +20,13 @@ import type { Detection, HealthClass, LocationSource, PhotoStatus, ReefImage } f
 export const ACCOUNT_DOMAIN = "coraldac.local"
 const USERNAME_RE = /^[a-z0-9._-]{3,30}$/
 
+/**
+ * Public read address of the R2 bucket with the finished WebP copies (coraldac-public), e.g. https://pub-xxxx.r2.dev. When set
+ * (Vercel: NEXT_PUBLIC_R2_PUBLIC_URL), photos and thumbnails load straight from R2; when empty they go through
+ * /api/photos/<id>/image (one function call and a redirect per picture).
+ */
+const PUBLIC_IMAGES = (process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? "").replace(/\/+$/, "")
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function toDetection(r: any): Detection {
   const health = r.filter === "OTHERS" ? undefined : ((r.health ?? undefined) as HealthClass | undefined)
@@ -45,8 +52,8 @@ function toImage(r: any, me: string | null): ReefImage {
   return {
     id: r.id,
     file: r.original_name ?? "Uploaded photo",
-    src: `/api/photos/${r.id}/image?kind=display`,
-    thumb: `/api/photos/${r.id}/image?kind=thumb`,
+    src: PUBLIC_IMAGES ? `${PUBLIC_IMAGES}/display/${r.id}.webp` : `/api/photos/${r.id}/image?kind=display`,
+    thumb: PUBLIC_IMAGES ? `${PUBLIC_IMAGES}/thumb/${r.id}.webp` : `/api/photos/${r.id}/image?kind=thumb`,
     stationId: r.station_id,
     lat: r.lat,
     lng: r.lng,
