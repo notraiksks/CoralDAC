@@ -27,6 +27,8 @@ import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { ClassBadge, ClassBreakdown, ClassDot } from "@/components/class-ui"
+import { ColonyPanel } from "@/components/image/colony-panel"
+import { ColonyPatches } from "@/components/image/colony-patches"
 import { DetectionViewer } from "@/components/image/detection-viewer"
 import { DeletePhotoButton } from "@/components/upload/delete-photo"
 import { STATIONS, stationById } from "@/lib/archive"
@@ -54,8 +56,20 @@ export function ImageDetail({ id }: { id: string }) {
   const [showBoxes, setShowBoxes] = React.useState(true)
   const [minConf, setMinConf] = React.useState(0)
   const [hover, setHover] = React.useState<string | null>(null)
-  const [picked, setPicked] = React.useState<string | null>(null)
+  // the picked colony belongs to one photo, so stepping to another photo closes its panel
+  const [pickedOn, setPickedOn] = React.useState<{ photo: string; det: string } | null>(null)
+  const picked = pickedOn && pickedOn.photo === id ? pickedOn.det : null
+  const setPicked = React.useCallback(
+    (next: string | null | ((p: string | null) => string | null)) =>
+      setPickedOn((cur) => {
+        const before = cur && cur.photo === id ? cur.det : null
+        const det = typeof next === "function" ? next(before) : next
+        return det ? { photo: id, det } : null
+      }),
+    [id]
+  )
   const rowRefs = React.useRef<Record<string, HTMLLIElement | null>>({})
+  const viewerRef = React.useRef<HTMLDivElement | null>(null)
 
   // neighbours within the same station, in archive order
   const siblings = React.useMemo(
@@ -133,11 +147,29 @@ export function ImageDetail({ id }: { id: string }) {
     toast.success(`Station set to ${st.name}`, { description: "The photo now counts on the map." })
   }
 
-  const pick = (did: string) => {
+  // click on a box: open (or close) that colony's panel on the photo
+  const pick = (did: string) => setPicked((p) => (p === did ? null : did))
+  // click on a row of the list: same panel, and bring the photo back into view
+  const pickFromList = (did: string) => {
     setPicked((p) => (p === did ? null : did))
-    rowRefs.current[did]?.scrollIntoView({ block: "nearest", behavior: "smooth" })
+    viewerRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" })
   }
-
+  const pickedIndex = picked ? visible.findIndex((d) => d.id === picked) : -1
+  const pickedDet = pickedIndex >= 0 ? visible[pickedIndex] : null
+  const stepColony = (delta: -1 | 1) => {
+    if (!visible.length) return
+    setPicked(visible[(pickedIndex + delta + visible.length) % visible.length].id)
+  }
+  const panelProps = pickedDet && {
+    image: img,
+    det: pickedDet,
+    index: pickedIndex,
+    total: visible.length,
+    canEdit,
+    onStep: stepColony,
+    onClose: () => setPicked(null),
+    onSetClass: (cls: HealthClass | "OTHERS") => setClass(pickedDet, cls),
+  }
   return (
     <div className="mx-auto w-full max-w-[96rem] space-y-4 p-4 md:p-6">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -173,7 +205,8 @@ export function ImageDetail({ id }: { id: string }) {
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      {/* top: the photo and, beside it, one patch per colony */}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-x-5 gap-y-3 rounded-lg border bg-card px-3 py-2">
             <Label className="gap-2 text-sm font-normal">
@@ -194,7 +227,17 @@ export function ImageDetail({ id }: { id: string }) {
               <span className="tabular w-9 text-right text-sm">{minConf.toFixed(2)}</span>
             </div>
           </div>
-          <DetectionViewer image={img} detections={visible} showBoxes={showBoxes} hoverId={active} onHover={setHover} onPick={pick} reserveRem={8.5} />
+          <div ref={viewerRef} className="scroll-my-20">
+            <DetectionViewer
+              image={img}
+              detections={visible}
+              showBoxes={showBoxes}
+              hoverId={active}
+              onHover={setHover}
+              onPick={pick}
+              reserveRem={8.5}
+            />
+          </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
             {HEALTH_CLASSES.map((k) => (
               <span key={k} className="inline-flex items-center gap-1.5">
@@ -207,7 +250,105 @@ export function ImageDetail({ id }: { id: string }) {
               </span>
             )}
           </div>
+
         </div>
+        <ColonyPatches
+          image={img}
+          detections={visible}
+          hoverId={active}
+          pickedId={picked}
+          onHover={setHover}
+          onPick={pick}
+          detail={panelProps && pickedDet ? <ColonyPanel key={pickedDet.id} {...panelProps} className="w-full bg-muted/50 shadow-none" /> : null}
+        />
+      </div>
+
+      {/* bottom: the list of detections and, at its right, the tally and the photo's details */}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+          <Card size="sm">
+            <CardHeader className="flex flex-row flex-wrap items-center gap-x-3 gap-y-1">
+              <CardTitle>Detections</CardTitle>
+              <span className="tabular text-xs text-muted-foreground">
+                {visible.length} {visible.length === 1 ? "colony" : "colonies"}
+              </span>
+              <span className="ml-auto hidden text-xs text-muted-foreground sm:inline">
+                <abbr className="no-underline" title="Confidence of the health classifier (or of the filter for not coral)">
+                  class
+                </abbr>{" "}
+                ·{" "}
+                <abbr className="no-underline" title="Confidence of the detector">
+                  det.
+                </abbr>{" "}
+                confidence
+              </span>
+              <Button variant="ghost" size="sm" onClick={() => exportDetectionsCsv(img)}>
+                <Download /> CSV
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {visible.length === 0 ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  {img.detections.length === 0 ? "No colonies were detected in this photo." : "No detections match the filters above."}
+                </p>
+              ) : (
+                <ul className="grid gap-x-8 sm:grid-cols-2 2xl:grid-cols-3">
+                  {visible.map((d) => {
+                    const cls = finalClass(d)
+                    return (
+                      <li
+                        key={d.id}
+                        ref={(el) => {
+                          rowRefs.current[d.id] = el
+                        }}
+                        onMouseEnter={() => setHover(d.id)}
+                        onMouseLeave={() => setHover(null)}
+                        onClick={() => pickFromList(d.id)}
+                        className={cn(
+                          "-mx-2 flex h-10 cursor-pointer scroll-my-24 items-center gap-2 rounded-md px-2 text-sm transition-colors",
+                          active === d.id ? "bg-muted" : "shadow-[inset_0_-1px_0_var(--border)]",
+                          picked === d.id && "ring-1 ring-foreground/20"
+                        )}
+                      >
+                        <span className="tabular w-9 shrink-0 text-xs text-muted-foreground">{d.id}</span>
+                        <ClassBadge cls={cls} />
+                        {d.corrected && (
+                          <Tooltip>
+                            <TooltipTrigger render={<Pencil className="size-3.5 text-muted-foreground" aria-label="Corrected by the uploader" />} />
+                            <TooltipContent>Corrected by the uploader</TooltipContent>
+                          </Tooltip>
+                        )}
+                        <span className="tabular ml-auto" title="Class confidence">
+                          {(cls === "OTHERS" ? d.filterConf : d.healthConf ?? 0).toFixed(2)}
+                        </span>
+                        <span className="tabular w-10 text-right text-muted-foreground" title="Detector confidence">
+                          {d.detConf.toFixed(2)}
+                        </span>
+                        {canEdit && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger render={<Button variant="ghost" size="icon-xs" aria-label={`Change class of ${d.id}`} onClick={(e) => e.stopPropagation()} />}>
+                              <Pencil />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-52">
+                              <DropdownMenuGroup>
+                                <DropdownMenuLabel>Correct the class</DropdownMenuLabel>
+                                <DropdownMenuRadioGroup value={cls} onValueChange={(v) => setClass(d, v as HealthClass | "OTHERS")}>
+                                  {[...HEALTH_CLASSES, "OTHERS" as const].map((k) => (
+                                    <DropdownMenuRadioItem key={k} value={k}>
+                                      <ClassDot cls={k} /> {CLASS_META[k].label}
+                                    </DropdownMenuRadioItem>
+                                  ))}
+                                </DropdownMenuRadioGroup>
+                              </DropdownMenuGroup>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
 
         <div className="space-y-4">
           <Card size="sm">
@@ -283,91 +424,6 @@ export function ImageDetail({ id }: { id: string }) {
           </Card>
         </div>
       </div>
-
-      <Card size="sm">
-        <CardHeader className="flex flex-row flex-wrap items-center gap-x-3 gap-y-1">
-          <CardTitle>Detections</CardTitle>
-          <span className="tabular text-xs text-muted-foreground">
-            {visible.length} {visible.length === 1 ? "colony" : "colonies"}
-          </span>
-          <span className="ml-auto hidden text-xs text-muted-foreground sm:inline">
-            <abbr className="no-underline" title="Confidence of the health classifier (or of the filter for not coral)">
-              class
-            </abbr>{" "}
-            ·{" "}
-            <abbr className="no-underline" title="Confidence of the detector">
-              det.
-            </abbr>{" "}
-            confidence
-          </span>
-          <Button variant="ghost" size="sm" onClick={() => exportDetectionsCsv(img)}>
-            <Download /> CSV
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {visible.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              {img.detections.length === 0 ? "No colonies were detected in this photo." : "No detections match the filters above."}
-            </p>
-          ) : (
-            <ul className="grid gap-x-8 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-              {visible.map((d) => {
-                const cls = finalClass(d)
-                return (
-                  <li
-                    key={d.id}
-                    ref={(el) => {
-                      rowRefs.current[d.id] = el
-                    }}
-                    onMouseEnter={() => setHover(d.id)}
-                    onMouseLeave={() => setHover(null)}
-                    onClick={() => setPicked((p) => (p === d.id ? null : d.id))}
-                    className={cn(
-                      "-mx-2 flex h-10 cursor-pointer scroll-my-24 items-center gap-2 rounded-md px-2 text-sm transition-colors",
-                      active === d.id ? "bg-muted" : "shadow-[inset_0_-1px_0_var(--border)]",
-                      picked === d.id && "ring-1 ring-foreground/20"
-                    )}
-                  >
-                    <span className="tabular w-9 shrink-0 text-xs text-muted-foreground">{d.id}</span>
-                    <ClassBadge cls={cls} />
-                    {d.corrected && (
-                      <Tooltip>
-                        <TooltipTrigger render={<Pencil className="size-3.5 text-muted-foreground" aria-label="Corrected by the uploader" />} />
-                        <TooltipContent>Corrected by the uploader</TooltipContent>
-                      </Tooltip>
-                    )}
-                    <span className="tabular ml-auto" title="Class confidence">
-                      {(cls === "OTHERS" ? d.filterConf : d.healthConf ?? 0).toFixed(2)}
-                    </span>
-                    <span className="tabular w-10 text-right text-muted-foreground" title="Detector confidence">
-                      {d.detConf.toFixed(2)}
-                    </span>
-                    {canEdit && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger render={<Button variant="ghost" size="icon-xs" aria-label={`Change class of ${d.id}`} onClick={(e) => e.stopPropagation()} />}>
-                          <Pencil />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-52">
-                          <DropdownMenuGroup>
-                            <DropdownMenuLabel>Correct the class</DropdownMenuLabel>
-                            <DropdownMenuRadioGroup value={cls} onValueChange={(v) => setClass(d, v as HealthClass | "OTHERS")}>
-                              {[...HEALTH_CLASSES, "OTHERS" as const].map((k) => (
-                                <DropdownMenuRadioItem key={k} value={k}>
-                                  <ClassDot cls={k} /> {CLASS_META[k].label}
-                                </DropdownMenuRadioItem>
-                              ))}
-                            </DropdownMenuRadioGroup>
-                          </DropdownMenuGroup>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
     </div>
   )
 }
@@ -385,14 +441,17 @@ function DetailSkeleton() {
   return (
     <div className="mx-auto w-full max-w-[96rem] space-y-4 p-4 md:p-6">
       <Skeleton className="h-12 w-72 max-w-full" />
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <Skeleton className="mx-auto aspect-square w-full" style={{ maxWidth: "max(20rem, calc(100svh - 8.5rem))" }} />
+        <Skeleton className="h-96" />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <Skeleton className="h-48" />
         <div className="space-y-4">
           <Skeleton className="h-36" />
           <Skeleton className="h-64" />
         </div>
       </div>
-      <Skeleton className="h-48" />
     </div>
   )
 }

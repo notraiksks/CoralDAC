@@ -51,7 +51,7 @@ function toDetection(r: any): Detection {
 function toImage(r: any, me: string | null): ReefImage {
   return {
     id: r.id,
-    file: r.original_name ?? "Uploaded photo",
+    file: r.original_name ?? (r.source === "archive" ? `${r.id}.JPG` : "Uploaded photo"),
     src: PUBLIC_IMAGES ? `${PUBLIC_IMAGES}/display/${r.id}.webp` : `/api/photos/${r.id}/image?kind=display`,
     thumb: PUBLIC_IMAGES ? `${PUBLIC_IMAGES}/thumb/${r.id}.webp` : `/api/photos/${r.id}/image?kind=thumb`,
     stationId: r.station_id,
@@ -67,8 +67,8 @@ function toImage(r: any, me: string | null): ReefImage {
     counts: { LC: r.n_lc ?? 0, PB: r.n_pb ?? 0, DC: r.n_dc ?? 0, DCA: r.n_dca ?? 0 },
     others: r.n_others ?? 0,
     provenance: {
-      source: "upload",
-      uploader: me && r.owner === me ? "You" : "Contributor",
+      source: r.source === "archive" ? "archive" : "upload",
+      uploader: r.source === "archive" ? SURVEY_NAME : me && r.owner === me ? "You" : "Contributor",
       uploadedAt: r.created_at ? String(r.created_at).slice(0, 16) : null,
       locationSource: r.location_source as LocationSource,
       models: MODEL_VERSIONS,
@@ -81,6 +81,23 @@ function toImage(r: any, me: string | null): ReefImage {
 }
 
 const SUMMARY = "photo_summaries"
+/** survey photos loaded into the database by webapp/serving/survey_ingest.py (source 'archive', no owner) */
+const SURVEY_NAME = "CoralNet survey 2024"
+const PAGE = 1000 // the database answers at most 1,000 rows per request
+
+/** uploads first (newest first), then the survey in station / date / transect / quadrat order */
+function byListOrder(a: ReefImage, b: ReefImage): number {
+  const sa = a.provenance.source === "archive", sb = b.provenance.source === "archive"
+  if (sa !== sb) return sa ? 1 : -1
+  if (!sa) return (b.provenance.uploadedAt ?? "").localeCompare(a.provenance.uploadedAt ?? "")
+  return (
+    (a.stationId ?? "").localeCompare(b.stationId ?? "") ||
+    a.date.localeCompare(b.date) ||
+    a.transect.localeCompare(b.transect, undefined, { numeric: true }) ||
+    (a.quadrat ?? 0) - (b.quadrat ?? 0) ||
+    a.id.localeCompare(b.id)
+  )
+}
 
 export function RemoteStoreProvider({ children }: { children: React.ReactNode }) {
   const sb = supabaseBrowser()!
@@ -96,8 +113,19 @@ export function RemoteStoreProvider({ children }: { children: React.ReactNode })
   const [retry, setRetry] = React.useState(0)
 
   const load = React.useCallback(async () => {
-    const { data, error } = await sb.from(SUMMARY).select("*").eq("source", "upload").order("created_at", { ascending: false })
-    if (!error) setRows((data ?? []).map((r) => toImage(r, userId)))
+    // uploads and survey photos, read in pages
+    const all: ReefImage[] = []
+    let error: unknown = null
+    for (let from = 0; ; from += PAGE) {
+      const page = await sb.from(SUMMARY).select("*").order("created_at", { ascending: false }).order("id").range(from, from + PAGE - 1)
+      if (page.error) {
+        error = page.error
+        break
+      }
+      all.push(...(page.data ?? []).map((r) => toImage(r, userId)))
+      if ((page.data ?? []).length < PAGE) break
+    }
+    if (!error) setRows(all.sort(byListOrder))
     else
       toast.error("Could not load the shared photos", {
         id: "coraldac-load",
@@ -122,7 +150,7 @@ export function RemoteStoreProvider({ children }: { children: React.ReactNode })
       const { data } = await sb.from(SUMMARY).select("*").eq("id", id).maybeSingle()
       setRows((all) => {
         const rest = all.filter((r) => r.id !== id)
-        if (!data || data.source !== "upload") return rest
+        if (!data) return rest
         const next = toImage(data, userId)
         const i = all.findIndex((r) => r.id === id)
         if (i < 0) return [next, ...rest]
@@ -179,7 +207,9 @@ export function RemoteStoreProvider({ children }: { children: React.ReactNode })
   }, [sb, load, refreshPhoto, retry])
 
   const done = React.useMemo(() => rows.filter((r) => r.status === "done"), [rows])
-  const images = React.useMemo(() => [...done, ...ARCHIVE_IMAGES], [done])
+  // Once the survey is in the database it replaces the 42 example photos shipped with the app (same photo ids).
+  const surveyInDb = React.useMemo(() => rows.some((r) => r.provenance.source === "archive"), [rows])
+  const images = React.useMemo(() => (surveyInDb ? done : [...done, ...ARCHIVE_IMAGES]), [done, surveyInDb])
   const myUploads = React.useMemo(() => (userId ? rows.filter((r) => r.owner === userId) : []), [rows, userId])
   const getImage = React.useCallback(
     (id: string) => {
@@ -192,12 +222,12 @@ export function RemoteStoreProvider({ children }: { children: React.ReactNode })
   )
   const ensureDetail = React.useCallback(
     (id: string) => {
-      if (ARCHIVE_IMAGES.some((a) => a.id === id)) return loadMasks(id)
+      if (!surveyInDb && ARCHIVE_IMAGES.some((a) => a.id === id)) return loadMasks(id)
       if (detailIds.current.has(id)) return
       detailIds.current.add(id)
       void loadDetail(id)
     },
-    [loadMasks, loadDetail]
+    [loadMasks, loadDetail, surveyInDb]
   )
   const isOwn = React.useCallback((img: ReefImage) => Boolean(userId && img.owner === userId), [userId])
 

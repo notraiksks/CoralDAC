@@ -19,6 +19,7 @@ export function DetectionViewer({
   onHover,
   onPick,
   reserveRem = 12,
+  overlay,
   className,
 }: {
   image: Pick<ReefImage, "src" | "file" | "width" | "height"> & { thumb?: string }
@@ -29,6 +30,8 @@ export function DetectionViewer({
   onPick?: (id: string) => void
   /** viewport height (rem) kept free for the page chrome around the photo; smaller = larger photo */
   reserveRem?: number
+  /** drawn above the boxes, positioned by the caller relative to the photo frame */
+  overlay?: React.ReactNode
   className?: string
 }) {
   const ratio = image.width / image.height
@@ -91,6 +94,7 @@ export function DetectionViewer({
           })}
         </svg>
       )}
+      {overlay}
     </div>
   )
 }
