@@ -1,10 +1,9 @@
 "use client"
 
-import { useDocMode } from "@/lib/doc-mode"
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { FlaskConical, Monitor, Moon, Sun } from "lucide-react"
+import { Monitor, Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
 import {
   Breadcrumb,
@@ -15,12 +14,10 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { Button } from "@/components/ui/button"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { stationById } from "@/lib/archive"
-import { apiConfigured } from "@/lib/classify"
+import { stationById } from "@/lib/stations"
 import { useStore } from "@/lib/store"
 
 const SECTION: Record<string, string> = {
@@ -72,42 +69,8 @@ export function SiteHeader() {
           ))}
         </BreadcrumbList>
       </Breadcrumb>
-      <DemoBadge />
       <ThemeToggle />
     </header>
-  )
-}
-
-function DemoBadge() {
-  const docMode = useDocMode()
-  if (docMode) return null
-  return (
-    <Popover>
-      <PopoverTrigger
-        render={
-          <Button variant="outline" size="sm" className="gap-1.5 border-dashed text-muted-foreground">
-            <FlaskConical className="text-pb" />
-            <span className="hidden sm:inline">{apiConfigured ? "Model API" : "Demo data"}</span>
-          </Button>
-        }
-      />
-      <PopoverContent align="end" className="w-80 text-sm">
-        <p className="font-medium">What is real on this page?</p>
-        <ul className="mt-2 space-y-1.5 text-muted-foreground">
-          <li>
-            <span className="text-foreground">Real:</span> survey photos, stations, dates and GPS from the 2024 CoralNet
-            survey, and for these photos every box, coral / not-coral decision, health class (LC, PB, DC, DCA) and outline,
-            which come from the trained pipeline.
-          </li>
-          <li>
-            <span className="text-foreground">Uploads:</span>{" "}
-            {apiConfigured
-              ? "classified by the same pipeline on the model server."
-              : "results are simulated, because no model server is connected."}
-          </li>
-        </ul>
-      </PopoverContent>
-    </Popover>
   )
 }
 

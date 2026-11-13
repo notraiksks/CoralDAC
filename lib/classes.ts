@@ -1,4 +1,4 @@
-import type { ClassCounts, Detection, HealthClass } from "./types"
+import type { ClassCounts, Detection, HealthClass, ReefImage } from "./types"
 
 export const HEALTH_CLASSES: HealthClass[] = ["LC", "PB", "DC", "DCA"]
 
@@ -27,6 +27,16 @@ export function countClasses(dets: Detection[]): ClassCounts {
     if (k !== "OTHERS") c[k]++
   }
   return c
+}
+
+/** A photo's tally: from its colonies when loaded, else from the database summary. */
+export function imageCounts(img: Pick<ReefImage, "detections" | "counts">): ClassCounts {
+  return img.detections.length || !img.counts ? countClasses(img.detections) : img.counts
+}
+
+/** Colonies of a photo rejected as not coral. */
+export function imageOthers(img: Pick<ReefImage, "detections" | "others">): number {
+  return img.detections.length || img.others == null ? img.detections.filter((d) => finalClass(d) === "OTHERS").length : img.others
 }
 
 export const totalOf = (c: ClassCounts) => c.LC + c.PB + c.DC + c.DCA

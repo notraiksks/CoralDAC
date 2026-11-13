@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation"
-import { STATIONS, stationById } from "@/lib/archive"
+import { STATIONS, stationById } from "@/lib/stations"
 import { StationDetail } from "@/components/stations/station-detail"
 
 export function generateStaticParams() {

@@ -1,8 +1,10 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { FolderUp, Info, Map, MapPin, Upload } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
+import { FolderUp, Info, LogOut, Map, MapPin, Upload } from "lucide-react"
+import { ContributeButton } from "@/components/auth/sign-in-card"
+import { useStore } from "@/lib/store"
 import {
   Sidebar,
   SidebarContent,
@@ -25,12 +27,20 @@ const EXPLORE = [
 
 export function AppSidebar() {
   const pathname = usePathname()
-  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href))
+  const router = useRouter()
+  const { remote, user, signOut } = useStore()
+  // "/upload" must not light up on "/uploads": a tab is active on its own path and the pages below it only
+  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`))
+  // signed-out visitors only explore (Rai, V2-0378); the Contribute button signs them in or up
+  const signedIn = !remote || Boolean(user)
+  const username = user?.email?.replace(/@coraldac\.local$/, "")
 
-  const work = [
-    { href: "/upload", label: "Upload photos", icon: Upload },
-    { href: "/uploads", label: "My uploads", icon: FolderUp },
-  ]
+  const work = signedIn
+    ? [
+        { href: "/upload", label: "Upload photos", icon: Upload },
+        { href: "/uploads", label: "My uploads", icon: FolderUp },
+      ]
+    : []
 
   return (
     <Sidebar collapsible="icon">
@@ -86,9 +96,31 @@ export function AppSidebar() {
           </>
         )}
 
+        {!signedIn && (
+          <SidebarGroup>
+            <SidebarGroupContent className="px-1 group-data-[collapsible=icon]:px-0">
+              <ContributeButton className="w-full group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-0" />
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
             <SidebarMenu>
+              {remote && user && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={async () => {
+                      await signOut()
+                      router.push("/")
+                    }}
+                    tooltip={username ? `Sign out (signed in as ${username})` : "Sign out"}
+                  >
+                    <LogOut />
+                    <span className="truncate">Sign out</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
               <SidebarMenuItem>
                 <SidebarMenuButton render={<Link href="/about" />} isActive={isActive("/about")} tooltip="How it works">
                   <Info />

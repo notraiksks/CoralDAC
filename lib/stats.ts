@@ -1,4 +1,4 @@
-import { addCounts, countClasses, emptyCounts, HEALTH_CLASSES, impactedShare, totalOf } from "./classes"
+import { addCounts, emptyCounts, HEALTH_CLASSES, imageCounts, imageOthers, impactedShare, totalOf } from "./classes"
 import type { ClassCounts, HealthClass, ReefImage, Station } from "./types"
 
 export interface StationSummary {
@@ -26,9 +26,9 @@ export function summarizeStations(stations: Station[], images: ReefImage[]): Sta
     let totals = emptyCounts()
     let others = 0
     for (const img of own) {
-      const c = countClasses(img.detections)
+      const c = imageCounts(img)
       totals = addCounts(totals, c)
-      others += img.detections.length - totalOf(c)
+      others += imageOthers(img)
     }
     const n = own.length
     const perQuadrat = Object.fromEntries(HEALTH_CLASSES.map((k) => [k, n ? totals[k] / n : 0])) as Record<HealthClass, number>

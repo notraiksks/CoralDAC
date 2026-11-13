@@ -4,7 +4,7 @@ import { useDocMode } from "@/lib/doc-mode"
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, CircleSlash, FlaskConical, ImagePlus, Loader2, MapPin, Navigation, PenLine, Trash2, Upload } from "lucide-react"
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, CircleSlash, FlaskConical, Hourglass, ImagePlus, Loader2, MapPin, Navigation, PenLine, Trash2, Upload } from "lucide-react"
 import { toast } from "sonner"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ClassBar } from "@/components/class-ui"
 import { DetectionViewer } from "@/components/image/detection-viewer"
 import { PageHeader } from "@/components/page-header"
-import { STATIONS, stationById } from "@/lib/archive"
+import { STATIONS, stationById } from "@/lib/stations"
 import { CLASS_META, countClasses, HEALTH_CLASSES, totalOf } from "@/lib/classes"
 import { apiConfigured, runInference, type InferenceResult } from "@/lib/classify"
 import { formatCoords, haversineKm, inPhilippines, nearestStation } from "@/lib/geo"
@@ -34,6 +34,7 @@ import {
 } from "@/lib/ingest"
 import { useStore } from "@/lib/store"
 import { MY_NAME } from "@/components/upload/my-uploads"
+import { SignInCard } from "@/components/auth/sign-in-card"
 import type { LocationSource, ReefImage } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -54,7 +55,20 @@ const SNAP_KM = 1
 
 export function UploadFlow() {
   const router = useRouter()
-  const { addUploads } = useStore()
+  const { addUploads, remote, user, uploadPhotos } = useStore()
+  // shared mode: are new uploads analyzed right now? (null while asking)
+  const [open, setOpen] = React.useState<boolean | null>(remote ? null : true)
+  React.useEffect(() => {
+    if (!remote) return
+    let alive = true
+    fetch("/api/uploads", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { open: true }))
+      .then((j: { open?: boolean }) => alive && setOpen(j.open !== false))
+      .catch(() => alive && setOpen(true))
+    return () => {
+      alive = false
+    }
+  }, [remote])
   const docMode = useDocMode()
   const [step, setStep] = React.useState(0)
   const [items, setItems] = React.useState<Item[]>([])
@@ -92,7 +106,7 @@ export function UploadFlow() {
       } else incoming.push(f)
     }
     const room = MAX_BATCH_IMAGES - items.length
-    if (incoming.length > room) errs.push(`Only ${MAX_BATCH_IMAGES} photos per batch; ${incoming.length - room} were skipped`)
+    if (incoming.length > room) errs.push(`Only ${MAX_BATCH_IMAGES} photos fit in one batch, so ${incoming.length - room} were skipped`)
     const accepted = incoming.slice(0, Math.max(0, room))
     const next: Item[] = []
     setBusy({ done: 0, total: accepted.length, label: "Reading photos" })
@@ -165,7 +179,45 @@ export function UploadFlow() {
   const locationOk = !(source === "manual" && manualError && (lat !== "" || lng !== ""))
   const unassigned = items.filter((it) => !locate(it).stationId).length
 
+  // shared mode: the photos go to storage and the GPU worker analyses them; results appear live on "My uploads"
+  async function sendForAnalysis() {
+    setBusy({ done: 0, total: items.length, label: "Uploading photos for analysis" })
+    const payload = items.map((it) => {
+      const loc = locate(it)
+      return {
+        file: it.file,
+        meta: {
+          stationId: loc.stationId,
+          lat: loc.lat,
+          lng: loc.lng,
+          locationSource: loc.source,
+          takenOn: it.exif.date || date || null,
+          transect: transect || null,
+          quadrat: it.quadrat ? Number(it.quadrat) : null,
+          camera: it.exif.camera || null,
+          exifLat: it.exif.lat,
+          exifLng: it.exif.lng,
+        },
+      }
+    })
+    const { sent, errors: errs } = await uploadPhotos(payload, (done) =>
+      setBusy({ done, total: items.length, label: "Uploading photos for analysis" })
+    )
+    setBusy(null)
+    if (errs.length) {
+      setErrors(errs)
+      if (sent) toast.error(`${errs.length} photo${errs.length > 1 ? "s were" : " was"} not sent`, { description: errs[0] })
+    }
+    if (sent) {
+      toast.success(`${sent} photo${sent > 1 ? "s" : ""} sent for analysis`, {
+        description: "Results appear on My uploads in about a minute (longer if the GPU is starting).",
+      })
+      router.push("/uploads")
+    } else setStep(0)
+  }
+
   async function analyze() {
+    if (remote) return sendForAnalysis()
     setStep(2)
     setBusy({ done: 0, total: items.length, label: "Detecting and classifying coral" })
     const out: Item[] = []
@@ -213,7 +265,7 @@ export function UploadFlow() {
     await addUploads(payload)
     toast.success(`${payload.length} photo${payload.length > 1 ? "s" : ""} saved`, {
       description: unassigned
-        ? `${unassigned} without a station join the map once you choose a station on the photo page; the rest count now.`
+        ? `The rest count now. ${unassigned} without a station join the map once you choose a station on the photo page.`
         : "They count on the map now. You can correct a class or delete a photo on its page.",
     })
     router.push("/uploads")
@@ -221,7 +273,26 @@ export function UploadFlow() {
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6 p-4 md:p-6">
-      <PageHeader title="Upload photos" description="Add quadrat photos from a survey. Results count on the map right away; you can correct or delete your own photos afterwards." />
+      <PageHeader title="Upload photos" description="Add quadrat photos from a survey. Results count on the map right away, and you can correct or delete your own photos afterward." />
+      {remote && !user ? (
+        <SignInCard />
+      ) : open === null ? (
+        <Card size="sm">
+          <CardContent className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" /> Checking whether uploads are open
+          </CardContent>
+        </Card>
+      ) : open === false ? (
+        <Alert>
+          <Hourglass />
+          <AlertTitle>Uploads are paused</AlertTitle>
+          <AlertDescription>
+            Analysis of new photos is not available yet. Uploads will open once the analysis server is running. You can still browse every
+            survey photo on the map and the station pages.
+          </AlertDescription>
+        </Alert>
+      ) : (
+      <>
       <Stepper step={step} />
 
       {busy && (
@@ -420,7 +491,7 @@ export function UploadFlow() {
               <ArrowLeft data-icon="inline-start" /> Back
             </Button>
             <Button disabled={!locationOk} onClick={analyze}>
-              Analyze {items.length} photo{items.length === 1 ? "" : "s"} <ArrowRight data-icon="inline-end" />
+              {remote ? "Upload and analyze" : "Analyze"} {items.length} photo{items.length === 1 ? "" : "s"} <ArrowRight data-icon="inline-end" />
             </Button>
           </div>
         </div>
@@ -453,6 +524,8 @@ export function UploadFlow() {
             </Button>
           </div>
         </div>
+      )}
+      </>
       )}
     </div>
   )

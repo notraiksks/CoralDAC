@@ -131,7 +131,7 @@ function StationMarkers({ summaries, target, metric, selectedId, onSelect }: {
               <div className="tabular text-muted-foreground">
                 {s.colonies} colonies · {s.images} quadrats · {fmt1(s.colonies / Math.max(1, s.images))}/quadrat
               </div>
-              {shifted && <div className="mt-1 text-[11px] text-muted-foreground">Marker moved for legibility; the dot marks its GPS point.</div>}
+              {shifted && <div className="mt-1 text-[11px] text-muted-foreground">Marker moved for legibility. The dot marks its GPS point.</div>}
             </Tooltip>
           </Marker>
         )

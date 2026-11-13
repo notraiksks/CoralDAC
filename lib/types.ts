@@ -26,7 +26,12 @@ export interface Detection {
   mask?: [number, number][]
   /** set when the uploader corrected the model's class */
   corrected?: HealthClass | "OTHERS"
+  /** row id in the shared database (uploads only) */
+  dbId?: string
 }
+
+/** analysis state of an upload in the shared database */
+export type PhotoStatus = "uploading" | "queued" | "running" | "done" | "failed"
 
 /** "none": uploaded without a location; the photo joins the map once a station is assigned */
 export type LocationSource = "station" | "exif" | "manual" | "none"
@@ -59,6 +64,17 @@ export interface ReefImage {
   camera: string
   detections: Detection[]
   provenance: Provenance
+  /**
+   * Class tally from the database summary (shared mode lists photos without their colonies; the colonies load on the photo's
+   * page). Use imageCounts(img), which prefers the colonies when they are loaded.
+   */
+  counts?: ClassCounts
+  /** colonies rejected as not coral, from the same summary */
+  others?: number
+  /** shared database only: analysis state, error text and the uploader's user id */
+  status?: PhotoStatus
+  error?: string | null
+  owner?: string | null
 }
 
 export interface Provenance {

@@ -3,7 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { ClassBar } from "@/components/class-ui"
-import { countClasses, totalOf } from "@/lib/classes"
+import { imageCounts, totalOf } from "@/lib/classes"
 import type { ReefImage } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -11,7 +11,7 @@ export function PhotoGrid({ images, className }: { images: ReefImage[]; classNam
   return (
     <ul className={cn("grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5", className)}>
       {images.map((img) => {
-        const c = countClasses(img.detections)
+        const c = imageCounts(img)
         return (
           <li key={img.id}>
             <Link

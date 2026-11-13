@@ -15,17 +15,26 @@ export function DetectionViewer({
   image,
   detections,
   showBoxes = true,
+  showOutlines = true,
   hoverId,
   onHover,
   onPick,
+  reserveRem = 12,
+  overlay,
   className,
 }: {
-  image: Pick<ReefImage, "src" | "file" | "width" | "height">
+  image: Pick<ReefImage, "src" | "file" | "width" | "height"> & { thumb?: string }
   detections: Detection[]
   showBoxes?: boolean
+  /** the SAM colony outlines (drawn even when the boxes are hidden) */
+  showOutlines?: boolean
   hoverId?: string | null
   onHover?: (id: string | null) => void
   onPick?: (id: string) => void
+  /** viewport height (rem) kept free for the page chrome around the photo; smaller = larger photo */
+  reserveRem?: number
+  /** drawn above the boxes, positioned by the caller relative to the photo frame */
+  overlay?: React.ReactNode
   className?: string
 }) {
   const ratio = image.width / image.height
@@ -33,10 +42,18 @@ export function DetectionViewer({
     <div
       className={cn("relative mx-auto w-full overflow-hidden rounded-lg bg-muted", className)}
       // fit the whole photo in the viewport height on desktop
-      style={{ aspectRatio: ratio, maxWidth: `max(20rem, calc((100svh - 12rem) * ${ratio}))` }}
+      style={{
+        aspectRatio: ratio,
+        maxWidth: `max(20rem, calc((100svh - ${reserveRem}rem) * ${ratio}))`,
+        // the thumbnail (already cached from the lists) fills the frame until the full photo arrives
+        backgroundImage: image.thumb ? `url("${image.thumb}")` : undefined,
+        backgroundSize: "contain",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
     >
       <Image src={image.src} alt={`Quadrat photo ${image.file}`} fill sizes="(min-width: 1024px) 60vw, 100vw" className="object-contain" unoptimized priority />
-      {showBoxes && (
+      {(showBoxes || showOutlines) && (
         <svg viewBox={`0 0 ${ratio} 1`} preserveAspectRatio="none" className="absolute inset-0 size-full" aria-hidden="true">
           {detections.map((d) => {
             const cls = finalClass(d)
@@ -45,7 +62,7 @@ export function DetectionViewer({
             const dim = hoverId != null && !active
             return (
               <g key={d.id}>
-              {cls !== "OTHERS" && d.mask && d.mask.length > 2 && (
+              {showOutlines && cls !== "OTHERS" && d.mask && d.mask.length > 2 && (
                 <polygon
                   points={d.mask.map(([px, py]) => `${px * ratio},${py}`).join(" ")}
                   fill="none"
@@ -65,7 +82,7 @@ export function DetectionViewer({
                 fill={active ? CLASS_META[cls].color : "transparent"}
                 fillOpacity={active ? 0.25 : 0}
                 stroke={CLASS_META[cls].color}
-                strokeOpacity={dim ? 0.35 : 1}
+                strokeOpacity={!showBoxes && !active ? 0 : dim ? 0.35 : 1}
                 strokeWidth={active ? 4 : 2.25}
                 strokeDasharray={cls === "OTHERS" ? "6 4" : undefined}
                 vectorEffect="non-scaling-stroke"
@@ -80,6 +97,7 @@ export function DetectionViewer({
           })}
         </svg>
       )}
+      {overlay}
     </div>
   )
 }
