@@ -55,7 +55,7 @@ export function ColonyPatches({
           </TooltipContent>
         </Tooltip>
       </CardHeader>
-      <CardContent ref={listRef} className="min-h-0 flex-1 overflow-y-auto border-t pt-3 pb-3">
+      <CardContent ref={listRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-t pt-3 pb-6 [scrollbar-width:none] [mask-image:linear-gradient(to_bottom,black_calc(100%-1.75rem),transparent)] [&::-webkit-scrollbar]:hidden">
         {detail && <div className="mb-3">{detail}</div>}
         {detections.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">No colonies to show.</p>

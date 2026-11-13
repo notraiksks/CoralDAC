@@ -26,7 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { ClassBadge, ClassBreakdown, ClassDot } from "@/components/class-ui"
+import { ClassBreakdown, ClassDot } from "@/components/class-ui"
 import { ColonyPanel } from "@/components/image/colony-panel"
 import { ColonyPatches } from "@/components/image/colony-patches"
 import { DetectionViewer } from "@/components/image/detection-viewer"
@@ -271,27 +271,33 @@ export function ImageDetail({ id }: { id: string }) {
               <span className="tabular text-xs text-muted-foreground">
                 {visible.length} {visible.length === 1 ? "colony" : "colonies"}
               </span>
-              <span className="ml-auto hidden text-xs text-muted-foreground sm:inline">
-                <abbr className="no-underline" title="Confidence of the health classifier (or of the filter for not coral)">
-                  class
-                </abbr>{" "}
-                ·{" "}
-                <abbr className="no-underline" title="Confidence of the detector">
-                  det.
-                </abbr>{" "}
-                confidence
-              </span>
-              <Button variant="ghost" size="sm" onClick={() => exportDetectionsCsv(img)}>
+              <Button variant="ghost" size="sm" className="ml-auto" onClick={() => exportDetectionsCsv(img)}>
                 <Download /> CSV
               </Button>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-0">
               {visible.length === 0 ? (
                 <p className="py-6 text-center text-sm text-muted-foreground">
                   {img.detections.length === 0 ? "No colonies were detected in this photo." : "No detections match the filters above."}
                 </p>
               ) : (
-                <ul className="grid gap-x-8 sm:grid-cols-2 2xl:grid-cols-3">
+                <div>
+                  {/* column labels, aligned with the rows */}
+                  <div className="flex items-center gap-3 border-b px-(--card-spacing) pb-2 text-[11px] text-muted-foreground">
+                    <span className="w-9 shrink-0">Colony</span>
+                    <span className="flex-1">Health class</span>
+                    <span className="w-20 text-right whitespace-nowrap" title="How sure the health classifier is">
+                      Health conf.
+                    </span>
+                    <span className="w-24 text-right whitespace-nowrap" title="How sure the detector is that this is a coral colony">
+                      Detector conf.
+                    </span>
+                    {canEdit && <span className="w-6" />}
+                  </div>
+                <ul
+                  className="max-h-[22rem] overflow-y-auto overscroll-contain px-(--card-spacing) pt-1 pb-6 [scrollbar-width:none] [mask-image:linear-gradient(to_bottom,black_calc(100%-1.75rem),transparent)] [&::-webkit-scrollbar]:hidden"
+                  aria-label="Detected colonies"
+                >
                   {visible.map((d) => {
                     const cls = finalClass(d)
                     return (
@@ -304,23 +310,24 @@ export function ImageDetail({ id }: { id: string }) {
                         onMouseLeave={() => setHover(null)}
                         onClick={() => pickFromList(d.id)}
                         className={cn(
-                          "-mx-2 flex h-10 cursor-pointer scroll-my-24 items-center gap-2 rounded-md px-2 text-sm transition-colors",
+                          "-mx-2 flex h-10 cursor-pointer scroll-my-2 items-center gap-3 rounded-md px-2 text-sm transition-colors",
                           active === d.id ? "bg-muted" : "shadow-[inset_0_-1px_0_var(--border)]",
                           picked === d.id && "ring-1 ring-foreground/20"
                         )}
                       >
                         <span className="tabular w-9 shrink-0 text-xs text-muted-foreground">{d.id}</span>
-                        <ClassBadge cls={cls} />
+                        <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                          <ClassDot cls={cls} />
+                          <span className={cn("truncate", cls === "OTHERS" && "text-muted-foreground")}>{CLASS_META[cls].label}</span>
                         {d.corrected && (
                           <Tooltip>
                             <TooltipTrigger render={<Pencil className="size-3.5 text-muted-foreground" aria-label="Corrected by the uploader" />} />
                             <TooltipContent>Corrected by the uploader</TooltipContent>
                           </Tooltip>
                         )}
-                        <span className="tabular ml-auto" title="Class confidence">
-                          {(cls === "OTHERS" ? d.filterConf : d.healthConf ?? 0).toFixed(2)}
                         </span>
-                        <span className="tabular w-10 text-right text-muted-foreground" title="Detector confidence">
+                        <span className="tabular w-20 text-right">{cls === "OTHERS" || d.corrected ? "–" : (d.healthConf ?? 0).toFixed(2)}</span>
+                        <span className="tabular w-24 text-right text-muted-foreground">
                           {d.detConf.toFixed(2)}
                         </span>
                         {canEdit && (
@@ -346,6 +353,7 @@ export function ImageDetail({ id }: { id: string }) {
                     )
                   })}
                 </ul>
+                </div>
               )}
             </CardContent>
           </Card>

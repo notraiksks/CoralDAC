@@ -19,8 +19,11 @@ import { cn } from "@/lib/utils"
 
 /** margin added on every side of the box: the same 10% as the classifier's patches (stage2_a20.colony_crop) */
 const PAD = 0.1
-/** letterbox colour of the classifier's 224 px inputs (stage2_a20.GRAY_PAD) */
-const LETTERBOX = "rgb(123 116 103)"
+/**
+ * Backdrop behind the patch where it does not fill the square: the UI's own surfaces, fading from the muted tone into the card, so
+ * the patch blends into the column (Rai, V2-0390; the classifier itself pads with gray, stage2_a20.GRAY_PAD).
+ */
+const BACKDROP = "linear-gradient(180deg, var(--muted), var(--card))"
 
 /**
  * One colony framed like the classifier's patch: box + 10% margin (kept inside the photo), fitted into a square on the letterbox
@@ -48,7 +51,7 @@ export function PatchImage({
   // inside a square: the longer side fills it, the other is centred (the letterbox)
   const size = regionRatio >= 1 ? { width: "100%", height: `${100 / regionRatio}%` } : { width: `${100 * regionRatio}%`, height: "100%" }
   return (
-    <div className={cn("relative aspect-square w-full overflow-hidden", className)} style={{ background: LETTERBOX }}>
+    <div className={cn("relative aspect-square w-full overflow-hidden", className)} style={{ background: BACKDROP }}>
       <div className="absolute inset-0 m-auto overflow-hidden" style={size}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -118,7 +121,6 @@ export function ColonyPanel({
 }) {
   const cls = finalClass(det)
   const meta = CLASS_META[cls]
-  const probs = det.p ? HEALTH_CLASSES.map((k) => ({ k, v: det.p![k] })) : null
 
   return (
     <section
@@ -151,40 +153,28 @@ export function ColonyPanel({
       <p className="-mt-1 flex items-center gap-1.5 font-medium">
         <ClassDot cls={cls} />
         <span className="min-w-0 flex-1">{meta.label}</span>
-        <span className="tabular text-xs font-normal text-muted-foreground" title="Class confidence">
-          {(cls === "OTHERS" ? det.filterConf : det.healthConf ?? 0).toFixed(2)}
-        </span>
       </p>
 
       <PatchImage image={image} det={det} outline className="rounded-md" />
 
-      {probs && cls !== "OTHERS" && (
-        <dl className="space-y-1" aria-label="Health class probabilities">
-          {probs.map(({ k, v }) => (
-            <div key={k} className="grid grid-cols-[2.25rem_1fr_2.25rem] items-center gap-2 text-xs">
-              <dt className={cn("text-muted-foreground", k === det.health && "font-medium text-foreground")}>{k}</dt>
-              <dd className="h-1.5 overflow-hidden rounded-full bg-muted">
-                <span className="block h-full rounded-full" style={{ width: `${Math.round(v * 100)}%`, background: CLASS_META[k].color }} />
-              </dd>
-              <dd className="tabular text-right">{v.toFixed(2)}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
-
-      <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 text-xs">
-        <dt className="text-muted-foreground">Detector confidence</dt>
-        <dd className="tabular text-right">{det.detConf.toFixed(2)}</dd>
-        <dt className="text-muted-foreground">Coral filter ({det.filter === "OTHERS" ? "not coral" : "coral"})</dt>
-        <dd className="tabular text-right">{det.filterConf.toFixed(2)}</dd>
-        {det.corrected && (
-          <>
-            <dt className="text-muted-foreground">Model said</dt>
-            <dd className="text-right">{det.filter === "OTHERS" || !det.health ? "Not coral" : det.health}</dd>
-          </>
+      <dl className="grid grid-cols-2 gap-2">
+        <Fact label="Detector confidence" hint="How sure the detector is that this is a coral colony" value={det.detConf} />
+        {cls === "OTHERS" ? (
+          <Fact label="Health confidence" hint="Not classified: the filter judged this not to be coral" value={null} />
+        ) : (
+          <Fact
+            label="Health confidence"
+            hint={`How sure the health classifier is that this colony is ${meta.label.toLowerCase()}`}
+            value={det.corrected ? null : det.healthConf ?? null}
+            note={det.corrected ? "Corrected" : undefined}
+          />
         )}
       </dl>
-      {det.corrected && <p className="text-xs text-muted-foreground">Class corrected by the uploader.</p>}
+      {det.corrected && (
+        <p className="text-xs text-muted-foreground">
+          Corrected by the uploader. The model said {det.filter === "OTHERS" || !det.health ? "not coral" : CLASS_META[det.health].label.toLowerCase()}.
+        </p>
+      )}
 
       {canEdit && (
         <DropdownMenu>
@@ -206,5 +196,20 @@ export function ColonyPanel({
         </DropdownMenu>
       )}
     </section>
+  )
+}
+
+/** one confidence: label, value as a number and a thin meter */
+function Fact({ label, hint, value, note }: { label: string; hint: string; value: number | null; note?: string }) {
+  return (
+    <div className="rounded-md bg-background/60 px-2.5 py-2 ring-1 ring-foreground/5" title={hint}>
+      <dt className="text-[11px] leading-tight text-muted-foreground">{label}</dt>
+      <dd className="tabular mt-0.5 text-base font-semibold leading-none">{value == null ? <span className="text-sm font-normal text-muted-foreground">{note ?? "–"}</span> : value.toFixed(2)}</dd>
+      {value != null && (
+        <dd className="mt-1.5 h-1 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+          <span className="block h-full rounded-full bg-foreground/50" style={{ width: `${Math.round(value * 100)}%` }} />
+        </dd>
+      )}
+    </div>
   )
 }
