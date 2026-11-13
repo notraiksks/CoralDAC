@@ -180,13 +180,13 @@ export function ImageDetail({ id }: { id: string }) {
         </div>
         {canEdit && <DeletePhotoButton img={img} onDeleted={() => router.push("/uploads")} />}
         <div className="flex items-center gap-1">
-          <Button variant="outline" size="icon" aria-label="Previous photo (←)" disabled={!prev} nativeButton={false} render={prev ? <Link href={`/images/${prev.id}`} /> : <span />}>
+          <Button variant="outline" size="icon" aria-label="Previous photo" disabled={!prev} nativeButton={false} render={prev ? <Link href={`/images/${prev.id}`} /> : <span />}>
             <ChevronLeft />
           </Button>
           <span className="tabular px-1 text-sm text-muted-foreground">
             {idx + 1} / {siblings.length}
           </span>
-          <Button variant="outline" size="icon" aria-label="Next photo (→)" disabled={!next} nativeButton={false} render={next ? <Link href={`/images/${next.id}`} /> : <span />}>
+          <Button variant="outline" size="icon" aria-label="Next photo" disabled={!next} nativeButton={false} render={next ? <Link href={`/images/${next.id}`} /> : <span />}>
             <ChevronRight />
           </Button>
         </div>

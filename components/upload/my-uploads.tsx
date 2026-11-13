@@ -23,7 +23,7 @@ export const MY_NAME = "You"
 const STATUS_TEXT: Record<Exclude<PhotoStatus, "done">, string> = {
   uploading: "Uploading",
   queued: "Waiting for the GPU",
-  running: "Analysing",
+  running: "Analyzing",
   failed: "Analysis failed",
 }
 
@@ -65,8 +65,8 @@ export function MyUploads() {
         title="My uploads"
         description={
           remote
-            ? "Photos you uploaded. Each is analysed on the GPU, then counts on the map once it has a station; open one to correct a class or delete it."
-            : "Photos you uploaded from this browser. They count on the map as soon as they have a station; open one to correct a class or delete it."
+            ? "Photos you uploaded. Each one is analyzed on the GPU and counts on the map once it has a station. Open a photo to correct a class or delete it."
+            : "Photos you uploaded from this browser. They count on the map as soon as they have a station. Open a photo to correct a class or delete it."
         }
         actions={
           <div className="flex gap-2">
@@ -82,7 +82,7 @@ export function MyUploads() {
               <Upload />
             </EmptyMedia>
             <EmptyTitle>No uploads yet</EmptyTitle>
-            <EmptyDescription>Upload quadrat photos from a survey; they will be listed here.</EmptyDescription>
+            <EmptyDescription>Upload quadrat photos from a survey and they will be listed here.</EmptyDescription>
           </EmptyHeader>
           <EmptyContent>{action}</EmptyContent>
         </Empty>

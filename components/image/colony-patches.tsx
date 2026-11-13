@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { PatchImage } from "@/components/image/colony-panel"
 import { ClassDot } from "@/components/class-ui"
 import { CLASS_META, finalClass } from "@/lib/classes"
@@ -45,15 +44,6 @@ export function ColonyPatches({
       <CardHeader className="flex flex-row items-baseline gap-2 pb-3">
         <CardTitle>Colony patches</CardTitle>
         <span className="tabular text-xs text-muted-foreground">{detections.length}</span>
-        <Tooltip>
-          <TooltipTrigger className="ml-auto cursor-help text-xs text-muted-foreground underline decoration-dotted underline-offset-2">
-            How they are cut
-          </TooltipTrigger>
-          <TooltipContent className="max-w-64">
-            Each patch is the detector&apos;s box plus a 10% margin, fitted into a square like the patches the health classifier
-            receives. Cut from the photo shown on this page.
-          </TooltipContent>
-        </Tooltip>
       </CardHeader>
       <CardContent ref={listRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-t pt-3 pb-6 [scrollbar-width:none] [mask-image:linear-gradient(to_bottom,black_calc(100%-1.75rem),transparent)] [&::-webkit-scrollbar]:hidden">
         {detail && <div className="mb-3">{detail}</div>}

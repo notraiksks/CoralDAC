@@ -13,7 +13,7 @@ export async function POST(_request: Request, ctx: { params: Promise<{ id: strin
   if (photo.status !== "uploading") return Response.json({ id, status: photo.status })
 
   const head = await headObject(BUCKET_ORIGINALS, photo.original_key)
-  if (!head) return Response.json({ error: "The file did not arrive; try again." }, { status: 409 })
+  if (!head) return Response.json({ error: "The file did not arrive. Please try again." }, { status: 409 })
   if (head.size > 10 * 1024 * 1024) {
     await deleteKeys(BUCKET_ORIGINALS, [photo.original_key])
     await db.from("photos").delete().eq("id", id)

@@ -93,7 +93,7 @@ export function UploadFlow() {
       } else incoming.push(f)
     }
     const room = MAX_BATCH_IMAGES - items.length
-    if (incoming.length > room) errs.push(`Only ${MAX_BATCH_IMAGES} photos per batch; ${incoming.length - room} were skipped`)
+    if (incoming.length > room) errs.push(`Only ${MAX_BATCH_IMAGES} photos fit in one batch, so ${incoming.length - room} were skipped`)
     const accepted = incoming.slice(0, Math.max(0, room))
     const next: Item[] = []
     setBusy({ done: 0, total: accepted.length, label: "Reading photos" })
@@ -252,7 +252,7 @@ export function UploadFlow() {
     await addUploads(payload)
     toast.success(`${payload.length} photo${payload.length > 1 ? "s" : ""} saved`, {
       description: unassigned
-        ? `${unassigned} without a station join the map once you choose a station on the photo page; the rest count now.`
+        ? `The rest count now. ${unassigned} without a station join the map once you choose a station on the photo page.`
         : "They count on the map now. You can correct a class or delete a photo on its page.",
     })
     router.push("/uploads")
@@ -260,7 +260,7 @@ export function UploadFlow() {
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6 p-4 md:p-6">
-      <PageHeader title="Upload photos" description="Add quadrat photos from a survey. Results count on the map right away; you can correct or delete your own photos afterwards." />
+      <PageHeader title="Upload photos" description="Add quadrat photos from a survey. Results count on the map right away, and you can correct or delete your own photos afterward." />
       {remote && !user ? (
         <SignInCard />
       ) : (

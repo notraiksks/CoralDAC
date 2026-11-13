@@ -20,7 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { ClassBreakdown, Stat } from "@/components/class-ui"
 import { STATIONS } from "@/lib/archive"
-import { HEALTH_CLASSES, impactedShare } from "@/lib/classes"
+import { impactedShare } from "@/lib/classes"
 import { countsOnMap, fmt1, formatHeat, HEAT_TARGETS, heatMax, summarizeStations, type HeatMetric, type HeatTarget, type StationSummary } from "@/lib/stats"
 import { useStore } from "@/lib/store"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -134,7 +134,7 @@ export function MapExplorer() {
         </MapButton>
       </div>
 
-      {selected && <StationPanel s={selected} metric={metric} onClose={() => select(null)} />}
+      {selected && <StationPanel s={selected} onClose={() => select(null)} />}
     </div>
   )
 }
@@ -321,7 +321,7 @@ function LayerControls({
           <TooltipTrigger render={<label className="flex items-center gap-2 text-sm" />}>
             <Switch checked={animate} onCheckedChange={setAnimate} disabled={!heatOn} /> Motion
           </TooltipTrigger>
-          <TooltipContent className="max-w-56">A slow, decorative drift. It never raises a value; leave it off for figures.</TooltipContent>
+          <TooltipContent className="max-w-56">A slow, decorative drift. It never raises a value. Turn it off for figures.</TooltipContent>
         </Tooltip>
         <ToggleGroup variant="outline" size="sm" spacing={0} value={[basemap]} onValueChange={(v) => v[0] && setBasemap(v[0] as Basemap)}>
           <ToggleGroupItem value="map">Map</ToggleGroupItem>
@@ -333,7 +333,7 @@ function LayerControls({
   )
 }
 
-function StationPanel({ s, metric, onClose }: { s: StationSummary; metric: HeatMetric; onClose: () => void }) {
+function StationPanel({ s, onClose }: { s: StationSummary; onClose: () => void }) {
   const { images } = useStore()
   const photos = images.filter((i) => i.stationId === s.station.id && countsOnMap(i))
   const months = [...new Set(photos.map((p) => p.date.slice(0, 7)))].sort()
@@ -375,11 +375,6 @@ function StationPanel({ s, metric, onClose }: { s: StationSummary; metric: HeatM
         <section className="space-y-2">
           <h3 className="text-sm font-medium">Health classes</h3>
           <ClassBreakdown counts={s.totals} secondary={s.perQuadrat} secondaryLabel="per quadrat" />
-          {metric === "perQuadrat" && (
-            <p className="tabular text-xs text-muted-foreground">
-              Per quadrat: {HEALTH_CLASSES.map((k) => `${k} ${fmt1(s.perQuadrat[k])}`).join(" · ")}
-            </p>
-          )}
           {s.others > 0 && (
             <p className="text-xs text-muted-foreground">
               {s.others} detections were filtered out as not coral and are not counted.

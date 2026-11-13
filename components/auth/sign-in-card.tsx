@@ -23,7 +23,6 @@ export function AuthForms({ onDone }: { onDone?: () => void }) {
   const [email, setEmail] = React.useState("")
   const [busy, setBusy] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
-  const usernameOk = /^[a-z0-9._-]{3,30}$/.test(username.trim().toLowerCase())
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -85,20 +84,9 @@ export function AuthForms({ onDone }: { onDone?: () => void }) {
         <form onSubmit={submit} className="space-y-3 pt-2">
           {fields}
           <div className="space-y-1.5">
-            <Label htmlFor="signup-email">
-              E-mail <span className="font-normal text-muted-foreground">(optional)</span>
-            </Label>
+            <Label htmlFor="signup-email">E-mail</Label>
             <Input id="signup-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-            <p className="text-xs text-muted-foreground">Only so the project team can reach you; no e-mails are sent.</p>
           </div>
-          <ul className="space-y-0.5 text-xs text-muted-foreground">
-            <li className={usernameOk ? "text-foreground" : undefined}>
-              {usernameOk ? "✓" : "•"} Username: 3–30 characters (letters, numbers, . _ -)
-            </li>
-            <li className={password.length >= 8 ? "text-foreground" : undefined}>
-              {password.length >= 8 ? "✓" : "•"} Password: at least 8 characters
-            </li>
-          </ul>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button type="submit" className="w-full" disabled={busy}>
             {busy ? <Loader2 className="animate-spin" /> : <UserPlus />} Create account
@@ -137,7 +125,7 @@ export function ContributeDialog({ open, onOpenChange, onDone }: { open: boolean
         <DialogHeader>
           <DialogTitle>Contribute survey photos</DialogTitle>
           <DialogDescription>
-            Sign in or create an account to upload quadrat photos. Only you can correct or delete the photos you upload.
+            Sign in or create an account to upload quadrat photos.
           </DialogDescription>
         </DialogHeader>
         <AuthForms onDone={onDone} />
@@ -152,7 +140,7 @@ export function SignInCard({ title = "Sign in to upload" }: { title?: string }) 
     <Card className="mx-auto w-full max-w-md">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
-        <CardDescription>Sign in or create an account. Only you can correct or delete the photos you upload.</CardDescription>
+        <CardDescription>Sign in or create an account to upload quadrat photos.</CardDescription>
       </CardHeader>
       <CardContent>
         <AuthForms />
@@ -166,8 +154,8 @@ export function SignOutButton() {
   if (!user) return null
   const name = user.email?.replace(/@coraldac\.local$/, "")
   return (
-    <Button variant="ghost" size="sm" onClick={() => void signOut()} title={name ?? undefined}>
-      <LogOut /> Sign out{name ? ` (${name})` : ""}
+    <Button variant="ghost" size="sm" onClick={() => void signOut()} title={name ? `Signed in as ${name}` : undefined}>
+      <LogOut /> Sign out
     </Button>
   )
 }

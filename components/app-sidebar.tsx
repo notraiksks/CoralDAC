@@ -29,7 +29,8 @@ export function AppSidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const { remote, user, signOut } = useStore()
-  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href))
+  // "/upload" must not light up on "/uploads": a tab is active on its own path and the pages below it only
+  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`))
   // signed-out visitors only explore (Rai, V2-0378); the Contribute button signs them in or up
   const signedIn = !remote || Boolean(user)
   const username = user?.email?.replace(/@coraldac\.local$/, "")
@@ -113,10 +114,10 @@ export function AppSidebar() {
                       await signOut()
                       router.push("/")
                     }}
-                    tooltip={`Sign out ${username ?? ""}`}
+                    tooltip={username ? `Sign out (signed in as ${username})` : "Sign out"}
                   >
                     <LogOut />
-                    <span className="truncate">Sign out{username ? ` (${username})` : ""}</span>
+                    <span className="truncate">Sign out</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}

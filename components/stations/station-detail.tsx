@@ -11,6 +11,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { ClassStackChart, type ClassRow } from "@/components/class-chart"
 import { ClassBreakdown, Stat } from "@/components/class-ui"
 import { PageHeader } from "@/components/page-header"
+import { PaginationBar } from "@/components/pagination-bar"
 import { PhotoGrid } from "@/components/photo-grid"
 import { stationById } from "@/lib/archive"
 import { addCounts, emptyCounts, HEALTH_CLASSES, imageCounts, impactedShare, totalOf } from "@/lib/classes"
@@ -22,6 +23,8 @@ import { useStore } from "@/lib/store"
 const monthLabel = (m: string) => new Date(`${m}-01T00:00`).toLocaleDateString(undefined, { month: "short", year: "numeric" })
 
 type Sort = "quadrat" | "colonies" | "impacted"
+/** photos per page: 6 rows of the widest grid (5 columns) */
+const PAGE_SIZE = 30
 
 export function StationDetail({ id }: { id: string }) {
   const station = stationById(id)!
@@ -34,6 +37,13 @@ export function StationDetail({ id }: { id: string }) {
   const [month, setMonth] = React.useState<string>("all")
   const [transect, setTransect] = React.useState<string>("all")
   const [sort, setSort] = React.useState<Sort>("quadrat")
+  const [page, setPage] = React.useState(1)
+  const photosRef = React.useRef<HTMLElement | null>(null)
+  // a new filter or sort starts again at page 1
+  const filterBy = <T,>(set: (v: T) => void) => (v: T) => {
+    set(v)
+    setPage(1)
+  }
 
   // mean colonies per quadrat for each survey month x transect
   const rows: ClassRow[] = months.flatMap((m) =>
@@ -52,6 +62,14 @@ export function StationDetail({ id }: { id: string }) {
       if (sort === "impacted") return impactedShare(imageCounts(b)) - impactedShare(imageCounts(a))
       return a.date.localeCompare(b.date) || a.transect.localeCompare(b.transect) || (a.quadrat ?? 0) - (b.quadrat ?? 0)
     })
+
+  const pages = Math.max(1, Math.ceil(shown.length / PAGE_SIZE))
+  const current = Math.min(page, pages)
+  const pageItems = shown.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE)
+  const goTo = (p: number) => {
+    setPage(p)
+    photosRef.current?.scrollIntoView({ block: "start", behavior: "smooth" })
+  }
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6">
@@ -103,12 +121,12 @@ export function StationDetail({ id }: { id: string }) {
         </Card>
       </div>
 
-      <section className="space-y-3">
+      <section ref={photosRef} className="scroll-mt-16 space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="mr-auto text-lg font-semibold">
             Photos <span className="tabular text-sm font-normal text-muted-foreground">{shown.length}</span>
           </h2>
-          <Select value={month} onValueChange={(v) => setMonth(String(v))}>
+          <Select value={month} onValueChange={(v) => filterBy(setMonth)(String(v))}>
             <SelectTrigger size="sm" aria-label="Survey month" className="w-36">
               <SelectValue>{(v: string) => (v === "all" ? "All surveys" : monthLabel(v))}</SelectValue>
             </SelectTrigger>
@@ -121,7 +139,7 @@ export function StationDetail({ id }: { id: string }) {
               ))}
             </SelectContent>
           </Select>
-          <ToggleGroup variant="outline" size="sm" spacing={0} value={[transect]} onValueChange={(v) => v[0] && setTransect(v[0])} aria-label="Transect">
+          <ToggleGroup variant="outline" size="sm" spacing={0} value={[transect]} onValueChange={(v) => v[0] && filterBy(setTransect)(v[0])} aria-label="Transect">
             <ToggleGroupItem value="all">All</ToggleGroupItem>
             {transects.map((t) => (
               <ToggleGroupItem key={t} value={t}>
@@ -129,7 +147,7 @@ export function StationDetail({ id }: { id: string }) {
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
-          <Select value={sort} onValueChange={(v) => setSort(v as Sort)}>
+          <Select value={sort} onValueChange={(v) => filterBy(setSort)(v as Sort)}>
             <SelectTrigger size="sm" aria-label="Sort photos" className="w-44">
               <SelectValue>{(v: Sort) => ({ quadrat: "Sort: survey order", colonies: "Sort: most colonies", impacted: "Sort: most affected" })[v]}</SelectValue>
             </SelectTrigger>
@@ -141,7 +159,10 @@ export function StationDetail({ id }: { id: string }) {
           </Select>
         </div>
         {shown.length ? (
-          <PhotoGrid images={shown} />
+          <>
+            <PhotoGrid images={pageItems} />
+            <PaginationBar page={current} pages={pages} total={shown.length} pageSize={PAGE_SIZE} onPage={goTo} className="pt-2" />
+          </>
         ) : (
           <Empty className="border">
             <EmptyHeader>
