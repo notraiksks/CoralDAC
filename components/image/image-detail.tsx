@@ -1,12 +1,10 @@
 "use client"
 
-import { useDocMode } from "@/lib/doc-mode"
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ChevronLeft, ChevronRight, Download, FlaskConical, Info, MapPin, Pencil } from "lucide-react"
+import { ChevronLeft, ChevronRight, Download, Info, MapPin, Pencil } from "lucide-react"
 import { toast } from "sonner"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -50,7 +48,6 @@ export function ImageDetail({ id }: { id: string }) {
   const { ready, getImage, ensureDetail, images, isOwn, updateImage } = useStore()
   // colonies and outlines are loaded only for the photo being viewed (V2-0381)
   React.useEffect(() => ensureDetail(id), [id, ensureDetail])
-  const docMode = useDocMode()
   const router = useRouter()
   const img = getImage(id)
   const [showBoxes, setShowBoxes] = React.useState(true)
@@ -182,16 +179,6 @@ export function ImageDetail({ id }: { id: string }) {
           </p>
         </div>
         {canEdit && <DeletePhotoButton img={img} onDeleted={() => router.push("/uploads")} />}
-        {img.provenance.simulated && !docMode && (
-          <Tooltip>
-            <TooltipTrigger render={<Badge variant="outline" className="border-dashed text-muted-foreground" />}>
-              <FlaskConical className="text-pb" /> Simulated classes
-            </TooltipTrigger>
-            <TooltipContent className="max-w-64">
-              Boxes come from the detector; the coral filter and health classes are simulated until Stage 2 is trained.
-            </TooltipContent>
-          </Tooltip>
-        )}
         <div className="flex items-center gap-1">
           <Button variant="outline" size="icon" aria-label="Previous photo (←)" disabled={!prev} nativeButton={false} render={prev ? <Link href={`/images/${prev.id}`} /> : <span />}>
             <ChevronLeft />
