@@ -9,9 +9,8 @@
  */
 import * as React from "react"
 import { toast } from "sonner"
-import { ARCHIVE_IMAGES, MODEL_VERSIONS } from "./archive"
+import { MODEL_VERSIONS } from "./stations"
 import { countClasses, finalClass } from "./classes"
-import { useArchiveMasks, withMasks } from "./details"
 import { StoreContext, type StoreValue, type UploadMeta } from "./store-context"
 import { supabaseBrowser } from "./supabase/client"
 import type { Detection, HealthClass, LocationSource, PhotoStatus, ReefImage } from "./types"
@@ -104,7 +103,6 @@ export function RemoteStoreProvider({ children }: { children: React.ReactNode })
   const [rows, setRows] = React.useState<ReefImage[]>([])
   /** full colonies (with outlines) of the uploads whose page was opened */
   const [details, setDetails] = React.useState<Record<string, Detection[]>>({})
-  const [masks, loadMasks] = useArchiveMasks()
   const [ready, setReady] = React.useState(false)
   const [user, setUser] = React.useState<{ id: string; email: string | null } | null>(null)
   const userId = user?.id ?? null
@@ -207,27 +205,24 @@ export function RemoteStoreProvider({ children }: { children: React.ReactNode })
   }, [sb, load, refreshPhoto, retry])
 
   const done = React.useMemo(() => rows.filter((r) => r.status === "done"), [rows])
-  // Once the survey is in the database it replaces the 42 example photos shipped with the app (same photo ids).
-  const surveyInDb = React.useMemo(() => rows.some((r) => r.provenance.source === "archive"), [rows])
-  const images = React.useMemo(() => (surveyInDb ? done : [...done, ...ARCHIVE_IMAGES]), [done, surveyInDb])
+  // finished uploads and the survey photos, all from the database (V2-0396: the bundled example photos are no longer shipped here)
+  const images = done
   const myUploads = React.useMemo(() => (userId ? rows.filter((r) => r.owner === userId) : []), [rows, userId])
   const getImage = React.useCallback(
     (id: string) => {
       const row = rows.find((i) => i.id === id)
-      if (row) return details[id] ? { ...row, detections: details[id] } : row
-      const a = ARCHIVE_IMAGES.find((i) => i.id === id)
-      return a ? withMasks(a, masks[id]) : undefined
+      if (!row) return undefined
+      return details[id] ? { ...row, detections: details[id] } : row
     },
-    [rows, details, masks]
+    [rows, details]
   )
   const ensureDetail = React.useCallback(
     (id: string) => {
-      if (!surveyInDb && ARCHIVE_IMAGES.some((a) => a.id === id)) return loadMasks(id)
       if (detailIds.current.has(id)) return
       detailIds.current.add(id)
       void loadDetail(id)
     },
-    [loadMasks, loadDetail, surveyInDb]
+    [loadDetail]
   )
   const isOwn = React.useCallback((img: ReefImage) => Boolean(userId && img.owner === userId), [userId])
 

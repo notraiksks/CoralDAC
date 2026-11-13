@@ -4,7 +4,7 @@ import { useDocMode } from "@/lib/doc-mode"
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, CircleSlash, FlaskConical, ImagePlus, Loader2, MapPin, Navigation, PenLine, Trash2, Upload } from "lucide-react"
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, CircleSlash, FlaskConical, Hourglass, ImagePlus, Loader2, MapPin, Navigation, PenLine, Trash2, Upload } from "lucide-react"
 import { toast } from "sonner"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ClassBar } from "@/components/class-ui"
 import { DetectionViewer } from "@/components/image/detection-viewer"
 import { PageHeader } from "@/components/page-header"
-import { STATIONS, stationById } from "@/lib/archive"
+import { STATIONS, stationById } from "@/lib/stations"
 import { CLASS_META, countClasses, HEALTH_CLASSES, totalOf } from "@/lib/classes"
 import { apiConfigured, runInference, type InferenceResult } from "@/lib/classify"
 import { formatCoords, haversineKm, inPhilippines, nearestStation } from "@/lib/geo"
@@ -56,6 +56,19 @@ const SNAP_KM = 1
 export function UploadFlow() {
   const router = useRouter()
   const { addUploads, remote, user, uploadPhotos } = useStore()
+  // shared mode: are new uploads analyzed right now? (null while asking)
+  const [open, setOpen] = React.useState<boolean | null>(remote ? null : true)
+  React.useEffect(() => {
+    if (!remote) return
+    let alive = true
+    fetch("/api/uploads", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { open: true }))
+      .then((j: { open?: boolean }) => alive && setOpen(j.open !== false))
+      .catch(() => alive && setOpen(true))
+    return () => {
+      alive = false
+    }
+  }, [remote])
   const docMode = useDocMode()
   const [step, setStep] = React.useState(0)
   const [items, setItems] = React.useState<Item[]>([])
@@ -263,6 +276,21 @@ export function UploadFlow() {
       <PageHeader title="Upload photos" description="Add quadrat photos from a survey. Results count on the map right away, and you can correct or delete your own photos afterward." />
       {remote && !user ? (
         <SignInCard />
+      ) : open === null ? (
+        <Card size="sm">
+          <CardContent className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" /> Checking whether uploads are open
+          </CardContent>
+        </Card>
+      ) : open === false ? (
+        <Alert>
+          <Hourglass />
+          <AlertTitle>Uploads are paused</AlertTitle>
+          <AlertDescription>
+            Analysis of new photos is not available yet. Uploads will open once the analysis server is running. You can still browse every
+            survey photo on the map and the station pages.
+          </AlertDescription>
+        </Alert>
       ) : (
       <>
       <Stepper step={step} />

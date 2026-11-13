@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto"
 import { currentUser, supabaseAdmin } from "@/lib/supabase/server"
 import { presignUpload } from "@/lib/server/r2"
 import { isTestPhotoName } from "@/lib/server/test-photos"
+import { analysisAvailable } from "@/lib/server/jobs"
 
 /**
  * POST /api/uploads  (signed in)  { name, type, size, stationId?, lat?, lng?, locationSource?, takenOn?, transect?, quadrat?,
@@ -10,6 +11,12 @@ import { isTestPhotoName } from "@/lib/server/test-photos"
  * file and calls POST /api/uploads/<id>/submit.
  */
 const TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png" }
+const PAUSED = "Analysis of new photos is not available yet. Uploads will open once the analysis server is running."
+
+/** GET /api/uploads -> { open }: whether new uploads can be analyzed now (the upload page asks before showing the form) */
+export function GET() {
+  return Response.json({ open: analysisAvailable() }, { headers: { "cache-control": "no-store" } })
+}
 const MAX_BYTES = 10 * 1024 * 1024
 const DAILY_LIMIT = Number(process.env.UPLOADS_PER_DAY ?? 30)
 
@@ -20,6 +27,8 @@ const str = (v: unknown, max: number) => (typeof v === "string" && v.trim() ? v.
 export async function POST(request: Request) {
   const user = await currentUser()
   if (!user) return Response.json({ error: "Sign in to upload." }, { status: 401 })
+  // without the GPU worker a photo would wait for analysis forever
+  if (!analysisAvailable()) return Response.json({ error: PAUSED }, { status: 503 })
   let b: Record<string, unknown>
   try {
     b = await request.json()
@@ -31,10 +40,17 @@ export async function POST(request: Request) {
   const size = Number(b.size)
   if (!name || !TYPES[type]) return Response.json({ error: "Only JPG, JPEG or PNG photos are accepted." }, { status: 415 })
   if (!(size > 0 && size <= MAX_BYTES)) return Response.json({ error: "Photos must be at most 10 MB." }, { status: 413 })
-  if (isTestPhotoName(name))
-    return Response.json({ error: `${name} belongs to the project's held-out test set and cannot be uploaded.` }, { status: 422 })
-
   const db = supabaseAdmin()
+  // survey photos are already on the map (their ids are their file names): an upload would count them twice
+  const stem = name.replace(/\.[^.]+$/, "")
+  const { count: inSurvey } = await db
+    .from("photos")
+    .select("id", { count: "exact", head: true })
+    .eq("source", "archive")
+    .in("id", [...new Set([stem, stem.toUpperCase()])])
+  if ((inSurvey ?? 0) > 0 || isTestPhotoName(name))
+    return Response.json({ error: `${name} is already part of the 2024 survey on the map.` }, { status: 422 })
+
   // open sign-up (V2-0378): cap GPU use per account
   const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString()
   const { count } = await db.from("photos").select("id", { count: "exact", head: true }).eq("owner", user.id).gte("created_at", since)

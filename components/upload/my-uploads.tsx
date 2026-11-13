@@ -12,11 +12,11 @@ import { ClassBar } from "@/components/class-ui"
 import { formatDate } from "@/components/image/image-detail"
 import { PageHeader } from "@/components/page-header"
 import { DeletePhotoButton } from "@/components/upload/delete-photo"
-import { stationById } from "@/lib/archive"
+import { stationById } from "@/lib/stations"
 import { imageCounts, totalOf } from "@/lib/classes"
 import { useStore } from "@/lib/store"
 import type { PhotoStatus } from "@/lib/types"
-import { SignInCard, SignOutButton } from "@/components/auth/sign-in-card"
+import { SignInCard } from "@/components/auth/sign-in-card"
 
 export const MY_NAME = "You"
 
@@ -70,7 +70,6 @@ export function MyUploads() {
         }
         actions={
           <div className="flex gap-2">
-            {remote && <SignOutButton />}
             {mine.length > 0 && action}
           </div>
         }

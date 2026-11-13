@@ -3,7 +3,7 @@ import { Boxes, ChevronRight, Filter, HeartPulse, Map, Scan, Upload, UserPlus, P
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ClassDot } from "@/components/class-ui"
 import { PageHeader } from "@/components/page-header"
-import { MODEL_VERSIONS } from "@/lib/archive"
+import { MODEL_VERSIONS } from "@/lib/stations"
 import { CLASS_META, HEALTH_CLASSES } from "@/lib/classes"
 
 export const metadata: Metadata = { title: "How it works" }

@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { stationById } from "@/lib/archive"
+import { stationById } from "@/lib/stations"
 import { useStore } from "@/lib/store"
 
 const SECTION: Record<string, string> = {

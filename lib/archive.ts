@@ -3,31 +3,15 @@
  * decisions, health classes and colony outlines are output of the final pipeline (Pipeline-V2 ops/tools/coraldac_demo_archive.py).
  */
 import raw from "./data/demo-index.json" // outlines are in public/demo/masks/<id>.json (scripts/split_archive.mjs)
-import type { Detection, ReefImage, Station } from "./types"
+import type { Detection, ReefImage } from "./types"
 
-export const DEMO_NOTE: string = raw.mockNote
+import { MODEL_VERSIONS, STATIONS, stationById } from "./stations"
 
-type ModelVersions = { detector: string; filter: string; classifier: string }
-
-export const MODEL_VERSIONS: ModelVersions = (raw as { models?: ModelVersions }).models ?? {
-  detector: "YOLOv8m x3 combined (E3x)",
-  filter: "ResNet50 CORAL/OTHERS",
-  classifier: "ResNet50 background-gray LC/PB/DC/DCA",
-}
+// stations and model versions live in lib/stations.ts (small, for every page); re-exported here for older imports
+export { MODEL_VERSIONS, STATIONS, stationById }
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
-
-export const STATIONS: Station[] = raw.stations.map((s) => ({
-  id: slug(s.name),
-  name: `${s.site.replace(/-/g, " ")} · ${s.depth}`,
-  site: s.site.replace(/-/g, " "),
-  depth: s.depth as Station["depth"],
-  depthM: s.depthM,
-  lat: s.lat,
-  lng: s.lng,
-}))
-
-const stationByRawName = new Map(raw.stations.map((s, i) => [s.name, STATIONS[i]]))
+const stationByRawName = new Map(raw.stations.map((s) => [s.name, stationById(slug(s.name))!]))
 
 export const ARCHIVE_IMAGES: ReefImage[] = raw.images.map((img) => {
   const st = stationByRawName.get(img.station)!
@@ -57,4 +41,3 @@ export const ARCHIVE_IMAGES: ReefImage[] = raw.images.map((img) => {
   }
 })
 
-export const stationById = (id: string | null | undefined) => STATIONS.find((s) => s.id === id)

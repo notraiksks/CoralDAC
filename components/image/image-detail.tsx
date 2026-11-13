@@ -29,7 +29,7 @@ import { ColonyPanel } from "@/components/image/colony-panel"
 import { ColonyPatches } from "@/components/image/colony-patches"
 import { DetectionViewer } from "@/components/image/detection-viewer"
 import { DeletePhotoButton } from "@/components/upload/delete-photo"
-import { STATIONS, stationById } from "@/lib/archive"
+import { STATIONS, stationById } from "@/lib/stations"
 import { CLASS_META, countClasses, finalClass, HEALTH_CLASSES } from "@/lib/classes"
 import { exportDetectionsCsv } from "@/lib/csv"
 import { formatCoords } from "@/lib/geo"
@@ -51,6 +51,7 @@ export function ImageDetail({ id }: { id: string }) {
   const router = useRouter()
   const img = getImage(id)
   const [showBoxes, setShowBoxes] = React.useState(true)
+  const [showOutlines, setShowOutlines] = React.useState(true)
   const [minConf, setMinConf] = React.useState(0)
   const [hover, setHover] = React.useState<string | null>(null)
   // the picked colony belongs to one photo, so stepping to another photo closes its panel
@@ -95,6 +96,7 @@ export function ImageDetail({ id }: { id: string }) {
       if (e.key === "ArrowLeft" && prev) router.push(`/images/${prev.id}`)
       if (e.key === "ArrowRight" && next) router.push(`/images/${next.id}`)
       if (e.key.toLowerCase() === "b") setShowBoxes((v) => !v)
+      if (e.key.toLowerCase() === "o") setShowOutlines((v) => !v)
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
@@ -107,7 +109,7 @@ export function ImageDetail({ id }: { id: string }) {
         <EmptyHeader>
           <EmptyTitle>Photo not found</EmptyTitle>
           <EmptyDescription>
-            It may have been removed from this browser. <Link href="/stations">Browse stations</Link>
+            It may have been deleted by its uploader. <Link href="/stations">Browse stations</Link>
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
@@ -200,6 +202,10 @@ export function ImageDetail({ id }: { id: string }) {
               <Switch checked={showBoxes} onCheckedChange={setShowBoxes} /> Boxes
               <kbd className="rounded border px-1 text-[11px] text-muted-foreground">B</kbd>
             </Label>
+            <Label className="gap-2 text-sm font-normal">
+              <Switch checked={showOutlines} onCheckedChange={setShowOutlines} /> Outlines
+              <kbd className="rounded border px-1 text-[11px] text-muted-foreground">O</kbd>
+            </Label>
             <div className="flex min-w-56 flex-1 items-center gap-3">
               <span className="text-sm whitespace-nowrap text-muted-foreground">Detector confidence ≥</span>
               <Slider
@@ -219,6 +225,7 @@ export function ImageDetail({ id }: { id: string }) {
               image={img}
               detections={visible}
               showBoxes={showBoxes}
+              showOutlines={showOutlines}
               hoverId={active}
               onHover={setHover}
               onPick={pick}

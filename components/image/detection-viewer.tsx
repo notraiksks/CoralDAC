@@ -15,6 +15,7 @@ export function DetectionViewer({
   image,
   detections,
   showBoxes = true,
+  showOutlines = true,
   hoverId,
   onHover,
   onPick,
@@ -25,6 +26,8 @@ export function DetectionViewer({
   image: Pick<ReefImage, "src" | "file" | "width" | "height"> & { thumb?: string }
   detections: Detection[]
   showBoxes?: boolean
+  /** the SAM colony outlines (drawn even when the boxes are hidden) */
+  showOutlines?: boolean
   hoverId?: string | null
   onHover?: (id: string | null) => void
   onPick?: (id: string) => void
@@ -50,7 +53,7 @@ export function DetectionViewer({
       }}
     >
       <Image src={image.src} alt={`Quadrat photo ${image.file}`} fill sizes="(min-width: 1024px) 60vw, 100vw" className="object-contain" unoptimized priority />
-      {showBoxes && (
+      {(showBoxes || showOutlines) && (
         <svg viewBox={`0 0 ${ratio} 1`} preserveAspectRatio="none" className="absolute inset-0 size-full" aria-hidden="true">
           {detections.map((d) => {
             const cls = finalClass(d)
@@ -59,7 +62,7 @@ export function DetectionViewer({
             const dim = hoverId != null && !active
             return (
               <g key={d.id}>
-              {cls !== "OTHERS" && d.mask && d.mask.length > 2 && (
+              {showOutlines && cls !== "OTHERS" && d.mask && d.mask.length > 2 && (
                 <polygon
                   points={d.mask.map(([px, py]) => `${px * ratio},${py}`).join(" ")}
                   fill="none"
@@ -79,7 +82,7 @@ export function DetectionViewer({
                 fill={active ? CLASS_META[cls].color : "transparent"}
                 fillOpacity={active ? 0.25 : 0}
                 stroke={CLASS_META[cls].color}
-                strokeOpacity={dim ? 0.35 : 1}
+                strokeOpacity={!showBoxes && !active ? 0 : dim ? 0.35 : 1}
                 strokeWidth={active ? 4 : 2.25}
                 strokeDasharray={cls === "OTHERS" ? "6 4" : undefined}
                 vectorEffect="non-scaling-stroke"
