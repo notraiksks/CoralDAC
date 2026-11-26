@@ -17,6 +17,7 @@ import { stationById } from "@/lib/stations"
 import { addCounts, emptyCounts, HEALTH_CLASSES, imageCounts, impactedShare, totalOf } from "@/lib/classes"
 import { exportImagesCsv } from "@/lib/csv"
 import { formatCoords } from "@/lib/geo"
+import { compareTransects, surveyOrder } from "@/lib/photo-order"
 import { countsOnMap, fmt1, summarizeStations } from "@/lib/stats"
 import { useStore } from "@/lib/store"
 
@@ -32,11 +33,16 @@ export function StationDetail({ id }: { id: string }) {
   const own = React.useMemo(() => images.filter((i) => i.stationId === id && countsOnMap(i)), [images, id])
   const s = summarizeStations([station], images)[0]
   const months = [...new Set(own.map((i) => i.date.slice(0, 7)))].sort()
-  const transects = [...new Set(own.map((i) => i.transect))].sort()
+  // "" = uploads without a transect (V2-0475: shown as "No transect", last)
+  const transects = [...new Set(own.map((i) => i.transect))].sort(compareTransects)
+  const tKey = (t: string) => t || "none"
 
   const [month, setMonth] = React.useState<string>("all")
   const [transect, setTransect] = React.useState<string>("all")
   const [sort, setSort] = React.useState<Sort>("quadrat")
+  // survey photos and uploads together; an upload is easy to find with "Uploads" (V2-0475)
+  const [kind, setKind] = React.useState<"all" | "archive" | "upload">("all")
+  const nUploads = own.filter((i) => i.provenance.source === "upload").length
   const [page, setPage] = React.useState(1)
   const photosRef = React.useRef<HTMLElement | null>(null)
   // a new filter or sort starts again at page 1
@@ -51,16 +57,17 @@ export function StationDetail({ id }: { id: string }) {
       const group = own.filter((i) => i.date.startsWith(m) && i.transect === t)
       const sum = group.reduce((acc, i) => addCounts(acc, imageCounts(i)), emptyCounts())
       const n = Math.max(1, group.length)
-      return { label: `${monthLabel(m).split(" ")[0]} ${t}`, ...Object.fromEntries(HEALTH_CLASSES.map((k) => [k, sum[k] / n])) } as ClassRow
+      return { label: `${monthLabel(m).split(" ")[0]} ${t || "no transect"}`, ...Object.fromEntries(HEALTH_CLASSES.map((k) => [k, sum[k] / n])) } as ClassRow
     })
   )
 
   const shown = own
-    .filter((i) => (month === "all" || i.date.startsWith(month)) && (transect === "all" || i.transect === transect))
+    .filter((i) => (month === "all" || i.date.startsWith(month)) && (transect === "all" || tKey(i.transect) === transect) &&
+      (kind === "all" || i.provenance.source === kind))
     .sort((a, b) => {
       if (sort === "colonies") return totalOf(imageCounts(b)) - totalOf(imageCounts(a))
       if (sort === "impacted") return impactedShare(imageCounts(b)) - impactedShare(imageCounts(a))
-      return a.date.localeCompare(b.date) || a.transect.localeCompare(b.transect) || (a.quadrat ?? 0) - (b.quadrat ?? 0)
+      return surveyOrder(a, b)
     })
 
   const pages = Math.max(1, Math.ceil(shown.length / PAGE_SIZE))
@@ -142,11 +149,23 @@ export function StationDetail({ id }: { id: string }) {
           <ToggleGroup variant="outline" size="sm" spacing={0} value={[transect]} onValueChange={(v) => v[0] && filterBy(setTransect)(v[0])} aria-label="Transect">
             <ToggleGroupItem value="all">All</ToggleGroupItem>
             {transects.map((t) => (
-              <ToggleGroupItem key={t} value={t}>
-                {t}
+              <ToggleGroupItem key={tKey(t)} value={tKey(t)}>
+                {t || "No transect"}
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
+          {nUploads > 0 && (
+            <Select value={kind} onValueChange={(v) => filterBy(setKind)(v as typeof kind)}>
+              <SelectTrigger size="sm" aria-label="Survey photos or uploads" className="w-40">
+                <SelectValue>{(v: typeof kind) => ({ all: "All photos", archive: "Survey photos", upload: `Uploads (${nUploads})` })[v]}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All photos</SelectItem>
+                <SelectItem value="archive">Survey photos</SelectItem>
+                <SelectItem value="upload">Uploads ({nUploads})</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
           <Select value={sort} onValueChange={(v) => filterBy(setSort)(v as Sort)}>
             <SelectTrigger size="sm" aria-label="Sort photos" className="w-44">
               <SelectValue>{(v: Sort) => ({ quadrat: "Sort: survey order", colonies: "Sort: most colonies", impacted: "Sort: most affected" })[v]}</SelectValue>

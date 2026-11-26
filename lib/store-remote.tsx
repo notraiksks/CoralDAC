@@ -241,6 +241,9 @@ export function RemoteStoreProvider({ children }: { children: React.ReactNode })
                 stationId: img.stationId,
                 lat: img.lat,
                 lng: img.lng,
+                transect: img.transect,
+                quadrat: img.quadrat,
+                date: img.date,
                 provenance: img.provenance,
                 ...(img.detections.length
                   ? { counts: countClasses(img.detections), others: img.detections.filter((d) => finalClass(d) === "OTHERS").length }
@@ -257,6 +260,16 @@ export function RemoteStoreProvider({ children }: { children: React.ReactNode })
           const { error } = await sb.from("photos").update({
             station_id: img.stationId, lat: img.lat, lng: img.lng, location_source: img.provenance.locationSource,
           }).eq("id", img.id)
+          if (error) failed = true
+        }
+        // V2-0475: survey details the uploader set or corrected on the photo page
+        if (prevRow.transect !== img.transect || prevRow.quadrat !== img.quadrat || prevRow.date !== img.date) {
+          // only the changed fields: a photo without a date shows its upload day, which must not become its survey date
+          const patch: Record<string, unknown> = {}
+          if (prevRow.transect !== img.transect) patch.transect = img.transect || null
+          if (prevRow.quadrat !== img.quadrat) patch.quadrat = img.quadrat
+          if (prevRow.date !== img.date) patch.taken_on = img.date.slice(0, 10)
+          const { error } = await sb.from("photos").update(patch).eq("id", img.id)
           if (error) failed = true
         }
         if (prevDets.length) {

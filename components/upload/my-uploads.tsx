@@ -22,7 +22,7 @@ export const MY_NAME = "You"
 
 const STATUS_TEXT: Record<Exclude<PhotoStatus, "done">, string> = {
   uploading: "Uploading",
-  queued: "Waiting for the GPU",
+  queued: "Waiting for analysis",
   running: "Analyzing",
   failed: "Analysis failed",
 }
