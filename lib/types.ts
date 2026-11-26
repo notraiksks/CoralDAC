@@ -61,6 +61,8 @@ export interface ReefImage {
   quadrat: number | null
   width: number
   height: number
+  /** the part the models checked, [x0, y0, x1, y1] in 0..1 (the rest was cut off before analysis); absent = unknown */
+  analysedRegion?: [number, number, number, number]
   camera: string
   detections: Detection[]
   provenance: Provenance

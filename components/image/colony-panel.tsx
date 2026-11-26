@@ -16,6 +16,7 @@ import { ClassDot } from "@/components/class-ui"
 import { CLASS_META, finalClass, HEALTH_CLASSES } from "@/lib/classes"
 import type { Detection, HealthClass, ReefImage } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { useElementHeight } from "@/lib/use-element-height"
 
 /** margin added on every side of the box: the same 10% as the classifier's patches (stage2_a20.colony_crop) */
 const PAD = 0.1
@@ -49,10 +50,12 @@ export function PatchImage({
   const rh = Math.min(1, y + h * (1 + PAD)) - ry
   const regionRatio = (rw * image.width) / (rh * image.height)
   // inside a square: the longer side fills it, the other is centred (the letterbox)
+  const [boxRef, boxH] = useElementHeight<HTMLDivElement>()
+  const sw = (2 * rh) / (boxH || 200) // 2 px in viewBox units of the region
   const size = regionRatio >= 1 ? { width: "100%", height: `${100 / regionRatio}%` } : { width: `${100 * regionRatio}%`, height: "100%" }
   return (
     <div className={cn("relative aspect-square w-full overflow-hidden", className)} style={{ background: BACKDROP }}>
-      <div className="absolute inset-0 m-auto overflow-hidden" style={size}>
+      <div ref={boxRef} className="absolute inset-0 m-auto overflow-hidden" style={size}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={image.src}
@@ -69,8 +72,8 @@ export function PatchImage({
                 points={det.mask.map(([px, py]) => `${px * ratio},${py}`).join(" ")}
                 fill="none"
                 stroke={CLASS_META[cls].color}
-                strokeWidth={2}
-                vectorEffect="non-scaling-stroke"
+                strokeWidth={sw}
+                strokeLinejoin="round"
               />
             ) : (
               <rect
@@ -80,9 +83,8 @@ export function PatchImage({
                 height={h}
                 fill="none"
                 stroke={CLASS_META[cls].color}
-                strokeWidth={2}
-                strokeDasharray={cls === "OTHERS" ? "6 4" : undefined}
-                vectorEffect="non-scaling-stroke"
+                strokeWidth={sw}
+                strokeDasharray={cls === "OTHERS" ? `${sw * 3} ${sw * 2}` : undefined}
               />
             )}
           </svg>

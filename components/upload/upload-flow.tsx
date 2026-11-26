@@ -249,6 +249,7 @@ export function UploadFlow() {
         quadrat: it.quadrat ? Number(it.quadrat) : null,
         width: it.width,
         height: it.height,
+        analysedRegion: it.result!.analysedRegion,
         camera: it.exif.camera,
         detections: it.result!.detections,
         provenance: {
@@ -660,7 +661,11 @@ function ResultCard({ item, stationName }: { item: Item; stationName?: string })
         </Button>
       </CardHeader>
       <CardContent className="space-y-3">
-        <DetectionViewer image={{ src: item.url, file: item.file.name, width: item.width, height: item.height }} detections={dets} showBoxes={boxes} />
+        <DetectionViewer
+          image={{ src: item.url, file: item.file.name, width: item.width, height: item.height, analysedRegion: item.result?.analysedRegion }}
+          detections={dets}
+          showBoxes={boxes}
+        />
         <ClassBar counts={c} />
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
           {HEALTH_CLASSES.map((k) => (
