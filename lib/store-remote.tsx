@@ -61,6 +61,7 @@ function toImage(r: any, me: string | null): ReefImage {
     quadrat: r.quadrat,
     width: r.width ?? 0,
     height: r.height ?? 0,
+    analysedRegion: Array.isArray(r.analysed_region) && r.analysed_region.length === 4 ? r.analysed_region : undefined,
     camera: r.camera ?? "",
     detections: [],
     counts: { LC: r.n_lc ?? 0, PB: r.n_pb ?? 0, DC: r.n_dc ?? 0, DCA: r.n_dca ?? 0 },

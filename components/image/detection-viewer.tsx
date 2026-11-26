@@ -5,11 +5,13 @@ import Image from "next/image"
 import { CLASS_META, finalClass } from "@/lib/classes"
 import type { Detection, ReefImage } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { useElementHeight } from "@/lib/use-element-height"
 
 /**
  * Photo with detection boxes drawn in an SVG overlay (normalized coordinates, so it scales with the image).
  * Coral boxes take their health-class color; boxes the filter rejected as OTHERS are dashed gray.
  * Coral colonies with a SAM outline from the model server (d.mask) also get a thin outline in the same color.
+ * V2-0471: when the photo was cut before analysis (image.analysedRegion), the parts that were not checked are shaded and labelled.
  */
 export function DetectionViewer({
   image,
@@ -23,7 +25,7 @@ export function DetectionViewer({
   overlay,
   className,
 }: {
-  image: Pick<ReefImage, "src" | "file" | "width" | "height"> & { thumb?: string }
+  image: Pick<ReefImage, "src" | "file" | "width" | "height" | "analysedRegion"> & { thumb?: string }
   detections: Detection[]
   showBoxes?: boolean
   /** the SAM colony outlines (drawn even when the boxes are hidden) */
@@ -38,8 +40,15 @@ export function DetectionViewer({
   className?: string
 }) {
   const ratio = image.width / image.height
+  // the overlay is drawn in photo-height units (viewBox height 1): px -> units divides by the rendered height
+  const [frameRef, frameH] = useElementHeight<HTMLDivElement>()
+  const u = (px: number) => px / (frameH || 600)
+  // shade what the models did not check (only when something was actually cut off)
+  const region = image.analysedRegion
+  const cut = region && (region[0] > 0.001 || region[1] > 0.001 || region[2] < 0.999 || region[3] < 0.999) ? region : null
   return (
     <div
+      ref={frameRef}
       className={cn("relative mx-auto w-full overflow-hidden rounded-lg bg-muted", className)}
       // fit the whole photo in the viewport height on desktop
       style={{
@@ -53,6 +62,27 @@ export function DetectionViewer({
       }}
     >
       <Image src={image.src} alt={`Quadrat photo ${image.file}`} fill sizes="(min-width: 1024px) 60vw, 100vw" className="object-contain" unoptimized priority />
+      {cut && (
+        <svg viewBox={`0 0 ${ratio} 1`} preserveAspectRatio="none" className="pointer-events-none absolute inset-0 size-full" aria-hidden="true">
+          <path
+            d={`M0 0H${ratio}V1H0Z M${cut[0] * ratio} ${cut[1]}V${cut[3]}H${cut[2] * ratio}V${cut[1]}Z`}
+            fillRule="evenodd"
+            fill="black"
+            fillOpacity={0.55}
+          />
+          <rect
+            x={cut[0] * ratio}
+            y={cut[1]}
+            width={(cut[2] - cut[0]) * ratio}
+            height={cut[3] - cut[1]}
+            fill="none"
+            stroke="white"
+            strokeOpacity={0.8}
+            strokeWidth={u(1.5)}
+            strokeDasharray={`${u(6)} ${u(4)}`}
+          />
+        </svg>
+      )}
       {(showBoxes || showOutlines) && (
         <svg viewBox={`0 0 ${ratio} 1`} preserveAspectRatio="none" className="absolute inset-0 size-full" aria-hidden="true">
           {detections.map((d) => {
@@ -68,8 +98,8 @@ export function DetectionViewer({
                   fill="none"
                   stroke={CLASS_META[cls].color}
                   strokeOpacity={dim ? 0.3 : 0.9}
-                  strokeWidth={active ? 2.5 : 1.5}
-                  vectorEffect="non-scaling-stroke"
+                  strokeWidth={u(active ? 2.5 : 1.5)}
+                  strokeLinejoin="round"
                   style={{ pointerEvents: "none" }}
                 />
               )}
@@ -78,14 +108,13 @@ export function DetectionViewer({
                 y={y}
                 width={w * ratio}
                 height={h}
-                rx={0.004}
+                rx={u(2)}
                 fill={active ? CLASS_META[cls].color : "transparent"}
                 fillOpacity={active ? 0.25 : 0}
                 stroke={CLASS_META[cls].color}
                 strokeOpacity={!showBoxes && !active ? 0 : dim ? 0.35 : 1}
-                strokeWidth={active ? 4 : 2.25}
-                strokeDasharray={cls === "OTHERS" ? "6 4" : undefined}
-                vectorEffect="non-scaling-stroke"
+                strokeWidth={u(active ? 4 : 2.25)}
+                strokeDasharray={cls === "OTHERS" ? `${u(6)} ${u(4)}` : undefined}
                 className="cursor-pointer transition-[stroke-opacity]"
                 style={{ pointerEvents: "all" }}
                 onMouseEnter={() => onHover?.(d.id)}
@@ -96,6 +125,11 @@ export function DetectionViewer({
             )
           })}
         </svg>
+      )}
+      {cut && (
+        <span className="pointer-events-none absolute bottom-2 left-2 rounded bg-black/70 px-2 py-0.5 text-xs text-white">
+          Shaded area was not checked
+        </span>
       )}
       {overlay}
     </div>

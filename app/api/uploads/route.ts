@@ -14,8 +14,8 @@ const TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png" 
 const PAUSED = "Analysis of new photos is not available yet. Uploads will open once the analysis server is running."
 
 /** GET /api/uploads -> { open }: whether new uploads can be analyzed now (the upload page asks before showing the form) */
-export function GET() {
-  return Response.json({ open: analysisAvailable() }, { headers: { "cache-control": "no-store" } })
+export async function GET() {
+  return Response.json({ open: await analysisAvailable() }, { headers: { "cache-control": "no-store" } })
 }
 const MAX_BYTES = 10 * 1024 * 1024
 const DAILY_LIMIT = Number(process.env.UPLOADS_PER_DAY ?? 30)
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   const user = await currentUser()
   if (!user) return Response.json({ error: "Sign in to upload." }, { status: 401 })
   // without the GPU worker a photo would wait for analysis forever
-  if (!analysisAvailable()) return Response.json({ error: PAUSED }, { status: 503 })
+  if (!(await analysisAvailable())) return Response.json({ error: PAUSED }, { status: 503 })
   let b: Record<string, unknown>
   try {
     b = await request.json()

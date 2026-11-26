@@ -20,6 +20,18 @@ export interface InferenceResult {
   simulated: boolean
   /** why the result is simulated */
   reason?: "no-api" | "api-error"
+  /** the part the models checked, 0..1 (server field image.analysed_region) */
+  analysedRegion?: [number, number, number, number]
+}
+
+/** server image.analysed_region (pixels) -> 0..1 of the photo */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function parseRegion(json: any, dims: { width: number; height: number }): InferenceResult["analysedRegion"] {
+  const r = json?.image?.analysed_region
+  if (!Array.isArray(r) || r.length !== 4) return undefined
+  const W = Number(json?.image?.width) || dims.width
+  const H = Number(json?.image?.height) || dims.height
+  return [r[0] / W, r[1] / H, r[2] / W, r[3] / H]
 }
 
 export const apiConfigured = Boolean(API_URL)
@@ -33,7 +45,12 @@ export async function runInference(file: File, dims: { width: number; height: nu
       const res = await fetch(`${API_URL.replace(/\/$/, "")}/classify`, { method: "POST", body })
       if (!res.ok) throw new Error(String(res.status))
       const json = await res.json()
-      return { detections: parseDetections(json, dims), models: json.models ?? MODEL_VERSIONS, simulated: false }
+      return {
+        detections: parseDetections(json, dims),
+        models: json.models ?? MODEL_VERSIONS,
+        simulated: false,
+        analysedRegion: parseRegion(json, dims),
+      }
     } catch {
       return { detections: simulate(file), models: MODEL_VERSIONS, simulated: true, reason: "api-error" }
     }
