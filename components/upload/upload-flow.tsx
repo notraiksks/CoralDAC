@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, CircleSlash, Hourglass, ImagePlus, Loader2, MapPin, Navigation, PenLine, Trash2 } from "lucide-react"
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, CircleCheck, CircleSlash, Hourglass, ImagePlus, Loader2, MapPin, Navigation, PenLine, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -30,7 +30,10 @@ import {
 } from "@/lib/ingest"
 import { useStore } from "@/lib/store"
 import { SignInCard } from "@/components/auth/sign-in-card"
-import type { LocationSource } from "@/lib/types"
+import type { LocationSource, ReefImage } from "@/lib/types"
+import { ClassBar } from "@/components/class-ui"
+import { StatusBadge } from "@/components/upload/my-uploads"
+import { imageCounts, totalOf } from "@/lib/classes"
 import { cn } from "@/lib/utils"
 
 interface Item {
@@ -43,7 +46,8 @@ interface Item {
   quadrat: string
 }
 
-const STEPS = ["Photos", "Location"] as const
+// V2-0477: step 3 follows the sent photos live until their results are in (they are already saved; nothing to confirm)
+const STEPS = ["Photos", "Location", "Results"] as const
 /** an EXIF/manual point this close to a station is assigned to it */
 const SNAP_KM = 1
 
@@ -66,6 +70,8 @@ export function UploadFlow() {
   const [items, setItems] = React.useState<Item[]>([])
   const [busy, setBusy] = React.useState<{ done: number; total: number; label: string } | null>(null)
   const [errors, setErrors] = React.useState<string[]>([])
+  /** the photos of the batch just sent, followed live on the results step */
+  const [sentIds, setSentIds] = React.useState<string[]>([])
 
   // location (shared by the batch)
   const [source, setSource] = React.useState<LocationSource>("station")
@@ -153,6 +159,19 @@ export function UploadFlow() {
     return { ...p, stationId: near && near.km <= SNAP_KM && !tied ? near.station.id : null, source }
   }
 
+  // V2-0478: a pasted pair "13.51937, 120.95555" (copied from the reef map or Google Maps) fills both boxes; otherwise one number,
+  // with a decimal comma read as a point
+  function typeCoord(v: string, set: (s: string) => void) {
+    // both numbers need a decimal point, so a typed decimal comma ("13,5") is never split into two numbers
+    const pair = v.match(/^\s*(-?\d{1,3}\.\d+)\s*[,;]\s*(-?\d{1,3}\.\d+)\s*$/)
+    if (pair) {
+      setLat(pair[1])
+      setLng(pair[2])
+      return
+    }
+    set(v.replace(",", "."))
+  }
+
   const manualError = (() => {
     if (source !== "manual") return null
     const la = Number(lat)
@@ -194,7 +213,7 @@ export function UploadFlow() {
         },
       }
     })
-    const { sent, errors: errs } = await uploadPhotos(payload, (done) =>
+    const { sent, errors: errs, ids } = await uploadPhotos(payload, (done) =>
       setBusy({ done, total: items.length, label: "Uploading photos for analysis" })
     )
     setBusy(null)
@@ -203,11 +222,19 @@ export function UploadFlow() {
       if (sent) toast.error(`${errs.length} photo${errs.length > 1 ? "s were" : " was"} not sent`, { description: errs[0] })
     }
     if (sent) {
-      toast.success(`${sent} photo${sent > 1 ? "s" : ""} sent for analysis`, {
-        description: "Results appear on My uploads in about a minute (longer if the GPU is starting).",
-      })
-      router.push("/uploads")
+      toast.success(`${sent} photo${sent > 1 ? "s" : ""} sent for analysis`)
+      setSentIds(ids)
+      setStep(2)
     } else setStep(0)
+  }
+
+  // after the results step: start again with an empty batch (location settings are kept for the next photos of the same survey)
+  function uploadMore() {
+    items.forEach((i) => URL.revokeObjectURL(i.url))
+    setItems([])
+    setErrors([])
+    setSentIds([])
+    setStep(0)
   }
 
   return (
@@ -362,13 +389,20 @@ export function UploadFlow() {
                   <div className="grid max-w-md grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <Label htmlFor="lat">Latitude</Label>
-                      <Input id="lat" inputMode="decimal" placeholder="13.51937" value={lat} onChange={(e) => setLat(e.target.value.replace(",", "."))} aria-invalid={!!manualError && lat !== ""} />
+                      <Input id="lat" inputMode="decimal" placeholder="13.51937" value={lat} onChange={(e) => typeCoord(e.target.value, setLat)} aria-invalid={!!manualError && lat !== ""} />
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="lng">Longitude</Label>
-                      <Input id="lng" inputMode="decimal" placeholder="120.95555" value={lng} onChange={(e) => setLng(e.target.value.replace(",", "."))} aria-invalid={!!manualError && lng !== ""} />
+                      <Input id="lng" inputMode="decimal" placeholder="120.95555" value={lng} onChange={(e) => typeCoord(e.target.value, setLng)} aria-invalid={!!manualError && lng !== ""} />
                     </div>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Find the spot on the{" "}
+                    <Link href="/" target="_blank" className="underline underline-offset-2">
+                      reef map
+                    </Link>{" "}
+                    (opens in a new tab): click it to copy its coordinates, then paste them into either box.
+                  </p>
                   {manualError && (lat !== "" || lng !== "") && <p className="text-sm text-destructive">{manualError}</p>}
                   {manualHint && <p className="text-sm text-muted-foreground">{manualHint}</p>}
                 </div>
@@ -444,8 +478,88 @@ export function UploadFlow() {
         </div>
       )}
 
+      {step === 2 && !busy && <SentResults ids={sentIds} errors={errors} onMore={uploadMore} onDone={() => router.push("/uploads")} />}
       </>
       )}
+    </div>
+  )
+}
+
+/** Step 3: the photos just sent, updated live (database changes) from "waiting" to their colony counts. */
+function SentResults({ ids, errors, onMore, onDone }: { ids: string[]; errors: string[]; onMore: () => void; onDone: () => void }) {
+  const { myUploads } = useStore()
+  const photos = ids.map((id) => myUploads.find((p) => p.id === id)).filter((p): p is ReefImage => Boolean(p))
+  const finished = photos.filter((p) => p.status === "done" || p.status === "failed").length
+  const allDone = photos.length > 0 && finished === photos.length
+  return (
+    <div className="space-y-4">
+      <Card size="sm">
+        <CardContent className="space-y-2">
+          <div className="flex items-center gap-2 text-sm">
+            {allDone ? <CircleCheck className="size-4 text-lc" /> : <Loader2 className="size-4 animate-spin" />}
+            {allDone ? "All photos are analyzed. They are saved and count on the map once they have a station." : "Analyzing your photos. You can leave this page; the results are saved either way."}
+            <span className="tabular ml-auto text-muted-foreground">
+              {finished} / {photos.length}
+            </span>
+          </div>
+          <Progress value={(finished / Math.max(1, photos.length)) * 100} />
+        </CardContent>
+      </Card>
+      {errors.length > 0 && (
+        <Alert variant="destructive">
+          <AlertTriangle />
+          <AlertTitle>{errors.length} photo{errors.length > 1 ? "s were" : " was"} not sent</AlertTitle>
+          <AlertDescription>{errors[0]}</AlertDescription>
+        </Alert>
+      )}
+      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {photos.map((p) => {
+          const c = imageCounts(p)
+          const done = p.status === "done"
+          return (
+            <li key={p.id}>
+              <Card size="sm" className="h-full gap-2 py-0">
+                <div className="relative aspect-square overflow-hidden rounded-t-xl bg-muted">
+                  {done ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.thumb} alt={p.file} className="size-full object-cover" />
+                  ) : (
+                    <span className="flex size-full items-center justify-center">
+                      <ImagePlus className="size-8 text-muted-foreground" />
+                    </span>
+                  )}
+                </div>
+                <CardContent className="space-y-2 pb-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate text-sm font-medium" title={p.file}>
+                      {p.file}
+                    </span>
+                    {p.status === "done" || !p.status ? (
+                      <span className="tabular shrink-0 text-xs text-muted-foreground">{totalOf(c)} colonies</span>
+                    ) : (
+                      <StatusBadge status={p.status} error={p.error} />
+                    )}
+                  </div>
+                  {done && <ClassBar counts={c} height="h-1.5" />}
+                  {done && (
+                    <Button variant="outline" size="sm" className="w-full" nativeButton={false} render={<Link href={`/images/${p.id}`} />}>
+                      Open photo <ArrowRight data-icon="inline-end" />
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            </li>
+          )
+        })}
+      </ul>
+      <div className="flex justify-between">
+        <Button variant="outline" onClick={onMore}>
+          <ImagePlus data-icon="inline-start" /> Upload more photos
+        </Button>
+        <Button onClick={onDone}>
+          My uploads <ArrowRight data-icon="inline-end" />
+        </Button>
+      </div>
     </div>
   )
 }

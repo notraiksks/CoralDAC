@@ -29,8 +29,11 @@ export interface StoreValue {
   ensureDetail: (id: string) => void
   /** only the uploader may correct, assign a station or delete */
   isOwn: (img: ReefImage) => boolean
-  /** sends the photos for analysis */
-  uploadPhotos: (items: { file: File; meta: UploadMeta }[], onProgress?: (done: number) => void) => Promise<{ sent: number; errors: string[] }>
+  /** sends the photos for analysis; ids = the new photos, in the order sent */
+  uploadPhotos: (
+    items: { file: File; meta: UploadMeta }[],
+    onProgress?: (done: number) => void
+  ) => Promise<{ sent: number; errors: string[]; ids: string[] }>
   updateImage: (img: ReefImage) => void
   removeUpload: (id: string) => Promise<void>
   /** signs in with an account made by the project (username + password, no e-mail); returns an error message or null */
