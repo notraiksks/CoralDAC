@@ -19,7 +19,6 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { ClassBreakdown, Stat } from "@/components/class-ui"
-import { STATIONS } from "@/lib/stations"
 import { impactedShare } from "@/lib/classes"
 import { quadratLabel } from "@/lib/photo-order"
 import { countsOnMap, fmt1, formatHeat, HEAT_TARGETS, heatMax, summarizeStations, type HeatMetric, type HeatTarget, type StationSummary } from "@/lib/stats"
@@ -35,7 +34,7 @@ const ReefMap = dynamic(() => import("./reef-map"), {
 })
 
 export function MapExplorer() {
-  const { images } = useStore()
+  const { images, stations } = useStore()
   const { resolvedTheme } = useTheme()
   const isMobile = useIsMobile()
   const router = useRouter()
@@ -50,7 +49,7 @@ export function MapExplorer() {
   const [basemap, setBasemap] = React.useState<Basemap>("satellite")
   const mapRef = React.useRef<L.Map | null>(null)
 
-  const summaries = React.useMemo(() => summarizeStations(STATIONS, images), [images])
+  const summaries = React.useMemo(() => summarizeStations(stations, images), [stations, images])
   const selected = summaries.find((s) => s.station.id === selectedId) ?? null
 
   const select = React.useCallback(

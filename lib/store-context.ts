@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import type { LocationSource, ReefImage } from "./types"
+import type { LocationSource, ReefImage, Station } from "./types"
 
 /** What the upload page sends for one photo (location is optional). */
 export interface UploadMeta {
@@ -19,6 +19,17 @@ export interface UploadMeta {
 
 export interface StoreValue {
   ready: boolean
+  /** every monitoring station: the 6 survey stations and the ones users created (V2-0481) */
+  stations: Station[]
+  /** true once the station list has been read from the database (before that: the 6 survey stations) */
+  stationsReady: boolean
+  stationById: (id: string | null | undefined) => Station | undefined
+  /** signed-in users create a station for photos far from every other; returns the station or a message */
+  createStation: (st: { name: string; depthM: number; lat: number; lng: number }) => Promise<{ station?: Station; error?: string }>
+  /** the creator only: rename or change the depth; returns a message or null */
+  updateStation: (id: string, patch: { name: string; depthM: number }) => Promise<string | null>
+  /** the creator only, and only while no photo uses it; returns a message or null */
+  deleteStation: (id: string) => Promise<string | null>
   /** photos that count on the map and the pages: the survey photos and finished uploads */
   images: ReefImage[]
   /** the signed-in visitor's own uploads in every state */

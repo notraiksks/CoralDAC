@@ -10,16 +10,15 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { ClassStackChart, type ClassRow } from "@/components/class-chart"
 import { ClassBar, Stat } from "@/components/class-ui"
 import { PageHeader } from "@/components/page-header"
-import { STATIONS } from "@/lib/stations"
 import { impactedShare } from "@/lib/classes"
 import { exportImagesCsv } from "@/lib/csv"
 import { countsOnMap, fmt1, overall, summarizeStations, type HeatMetric } from "@/lib/stats"
 import { useStore } from "@/lib/store"
 
 export function StationsOverview() {
-  const { images } = useStore()
+  const { images, stations, stationById } = useStore()
   const [metric, setMetric] = React.useState<HeatMetric>("perQuadrat")
-  const summaries = React.useMemo(() => summarizeStations(STATIONS, images), [images])
+  const summaries = React.useMemo(() => summarizeStations(stations, images), [stations, images])
   const all = overall(summaries)
   const rows: ClassRow[] = summaries.map((s) => ({ label: s.station.name, ...(metric === "total" ? s.totals : s.perQuadrat) }))
 
@@ -29,7 +28,7 @@ export function StationsOverview() {
         title="Stations"
         description="Coral colonies counted per health class at each monitoring station, from every analyzed quadrat photo."
         actions={
-          <Button variant="outline" onClick={() => exportImagesCsv(images.filter(countsOnMap), "coraldac-images.csv")}>
+          <Button variant="outline" onClick={() => exportImagesCsv(images.filter(countsOnMap), "coraldac-images.csv", (id) => stationById(id)?.name)}>
             <Download /> Export counts (CSV)
           </Button>
         }

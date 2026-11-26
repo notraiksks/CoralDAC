@@ -14,7 +14,7 @@ import { Progress } from "@/components/ui/progress"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PageHeader } from "@/components/page-header"
-import { STATIONS, stationById } from "@/lib/stations"
+import { CreateStationCard } from "@/components/stations/edit-station"
 import { formatCoords, haversineKm, inPhilippines, nearestStation } from "@/lib/geo"
 import { parseQuadrat } from "@/lib/photo-order"
 import {
@@ -30,7 +30,7 @@ import {
 } from "@/lib/ingest"
 import { useStore } from "@/lib/store"
 import { SignInCard } from "@/components/auth/sign-in-card"
-import type { LocationSource, ReefImage } from "@/lib/types"
+import type { LocationSource, ReefImage, Station } from "@/lib/types"
 import { ClassBar } from "@/components/class-ui"
 import { StatusBadge } from "@/components/upload/my-uploads"
 import { imageCounts, totalOf } from "@/lib/classes"
@@ -53,7 +53,9 @@ const SNAP_KM = 1
 
 export function UploadFlow() {
   const router = useRouter()
-  const { user, uploadPhotos } = useStore()
+  const { user, uploadPhotos, stations, stationById } = useStore()
+  /** V2-0481: a station the user created on this page for photos with no station within 1 km */
+  const [newStation, setNewStation] = React.useState<Station | null>(null)
   // shared mode: are new uploads analyzed right now? (null while asking)
   const [open, setOpen] = React.useState<boolean | null>(null)
   React.useEffect(() => {
@@ -153,10 +155,15 @@ export function UploadFlow() {
     if (source === "manual" && (manualError || lat === "" || lng === "")) return none
     const p = source === "exif" ? (it.exif.lat != null ? { lat: it.exif.lat, lng: it.exif.lng! } : null) : { lat: Number(lat), lng: Number(lng) }
     if (!p || !Number.isFinite(p.lat) || !Number.isFinite(p.lng)) return none
-    const near = nearestStation(STATIONS, p.lat, p.lng)
+    const near = nearestStation(stations, p.lat, p.lng)
     // stations at one site can share a GPS point (Deep / Shallow): then GPS cannot decide, a person must
-    const tied = near ? STATIONS.filter((s) => Math.abs(haversineKm(p.lat, p.lng, s.lat, s.lng) - near.km) < 0.05).length > 1 : false
-    return { ...p, stationId: near && near.km <= SNAP_KM && !tied ? near.station.id : null, source }
+    const tied = near ? stations.filter((s) => Math.abs(haversineKm(p.lat, p.lng, s.lat, s.lng) - near.km) < 0.05).length > 1 : false
+    if (near && near.km <= SNAP_KM && !tied) return { ...p, stationId: near.station.id, source }
+    // no station within 1 km (not a Deep/Shallow tie): the station created on this page, if any
+    const far = !near || near.km > SNAP_KM
+    // (it is used for photos up to 5 km from it; one farther away gets the offer to create another station)
+    const useNew = far && newStation && haversineKm(p.lat, p.lng, newStation.lat, newStation.lng) <= 5
+    return { ...p, stationId: useNew ? newStation.id : null, source, far }
   }
 
   // V2-0478: a pasted pair "13.51937, 120.95555" (copied from the reef map or Google Maps) fills both boxes; otherwise one number,
@@ -191,6 +198,11 @@ export function UploadFlow() {
   const locationOk = !(source === "manual" && manualError && (lat !== "" || lng !== ""))
   // "0" or "000" is not a quadrat; empty is fine
   const badQuadrats = items.filter((it) => it.quadrat !== "" && parseQuadrat(it.quadrat) == null).length
+  // V2-0481: photos with coordinates but no station within 1 km -> offer a new station at their mean position
+  const farPoints = source === "exif" || source === "manual" ? items.map(locate).filter((l) => l.far && !l.stationId && l.lat != null && l.lng != null) : []
+  const farPoint = farPoints.length
+    ? { lat: farPoints.reduce((a, l) => a + l.lat!, 0) / farPoints.length, lng: farPoints.reduce((a, l) => a + l.lng!, 0) / farPoints.length }
+    : null
 
   // the photos go to storage and the GPU worker analyses them; results appear live on "My uploads"
   async function sendForAnalysis() {
@@ -368,7 +380,7 @@ export function UploadFlow() {
                       <SelectValue placeholder="Choose a station">{(v: string) => stationById(v)?.name ?? "Choose a station"}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      {STATIONS.map((s) => (
+                      {stations.map((s) => (
                         <SelectItem key={s.id} value={s.id}>
                           {s.name} <span className="text-muted-foreground">· {s.depthM} m</span>
                         </SelectItem>
@@ -406,6 +418,19 @@ export function UploadFlow() {
                   {manualError && (lat !== "" || lng !== "") && <p className="text-sm text-destructive">{manualError}</p>}
                   {manualHint && <p className="text-sm text-muted-foreground">{manualHint}</p>}
                 </div>
+              )}
+              {user && farPoint && (
+                <CreateStationCard
+                  key={`${farPoint.lat.toFixed(4)},${farPoint.lng.toFixed(4)}`}
+                  point={farPoint}
+                  count={farPoints.length}
+                  onCreated={setNewStation}
+                />
+              )}
+              {newStation && !farPoint && (source === "exif" || source === "manual") && (
+                <p className="text-sm text-muted-foreground">
+                  Photos without a nearby station go to the new station <span className="font-medium text-foreground">{newStation.name}</span>.
+                </p>
               )}
 
               <div className="grid gap-3 border-t pt-4 sm:grid-cols-2">
@@ -637,6 +662,7 @@ function Dropzone({ onFiles, disabled }: { onFiles: (f: FileList) => void; disab
 }
 
 function LocationSummary({ items, locate, ok }: { items: Item[]; locate: (it: Item) => Located; ok: boolean }) {
+  const { stationById } = useStore()
   const resolved = items.map(locate)
   const placed = resolved.filter((r) => r.stationId)
   const stations = new Set(placed.map((r) => r.stationId))
@@ -675,4 +701,4 @@ function LocationSummary({ items, locate, ok }: { items: Item[]; locate: (it: It
   )
 }
 
-type Located = { lat: number | null; lng: number | null; stationId: string | null; source: LocationSource }
+type Located = { lat: number | null; lng: number | null; stationId: string | null; source: LocationSource; far?: boolean }
