@@ -9,11 +9,11 @@
  */
 import * as React from "react"
 import { toast } from "sonner"
-import { MODEL_VERSIONS } from "./stations"
+import { findStation, MODEL_VERSIONS, SURVEY_STATIONS } from "./stations"
 import { countClasses, finalClass } from "./classes"
 import { StoreContext, type StoreValue, type UploadMeta } from "./store-context"
 import { supabaseBrowser } from "./supabase/client"
-import type { Detection, HealthClass, LocationSource, PhotoStatus, ReefImage } from "./types"
+import type { Detection, HealthClass, LocationSource, PhotoStatus, ReefImage, Station } from "./types"
 
 /** login names are e-mail addresses on this placeholder domain (never mailed) */
 export const ACCOUNT_DOMAIN = "coraldac.local"
@@ -43,6 +43,14 @@ function toDetection(r: any): Detection {
     maskFallback: r.mask_fallback ?? undefined,
     mask: Array.isArray(r.mask) ? (r.mask as [number, number][]) : undefined,
     corrected: r.corrected ?? undefined,
+  }
+}
+
+/** a stations row -> Station (V2-0481) */
+function toStation(r: any): Station {
+  return {
+    id: r.id, name: r.name, site: r.site, depth: r.depth === "Deep" ? "Deep" : "Shallow",
+    depthM: r.depth_m == null ? null : Number(r.depth_m), lat: r.lat, lng: r.lng, createdBy: r.created_by ?? null,
   }
 }
 
@@ -110,6 +118,14 @@ export function RemoteStoreProvider({ children }: { children: React.ReactNode })
   const detailIds = React.useRef(new Set<string>())
   /** bumped by the "Retry" button of the load-error message: reloads the list and reconnects live updates */
   const [retry, setRetry] = React.useState(0)
+  /** V2-0481: survey stations first paint, then every station in the database (users can add their own) */
+  const [stations, setStations] = React.useState<Station[]>(SURVEY_STATIONS)
+  const [stationsReady, setStationsReady] = React.useState(false)
+  const loadStations = React.useCallback(async () => {
+    const { data, error } = await sb.from("stations").select("id,name,site,depth,depth_m,lat,lng,created_by").order("created_at").order("id")
+    if (!error && data) setStations(data.map(toStation))
+    setStationsReady(true)
+  }, [sb])
 
   const load = React.useCallback(async () => {
     // uploads and survey photos, read in pages of 1,000, two pages at a time (V2-0480: ~1,800 photos = one round trip, not two)
@@ -208,6 +224,7 @@ export function RemoteStoreProvider({ children }: { children: React.ReactNode })
   // data + live updates: each change refreshes only its photo (debounced per photo, e.g. the worker inserting 15 colonies)
   React.useEffect(() => {
     void Promise.resolve().then(load) // state is set after the fetch, not during the effect
+    void Promise.resolve().then(loadStations)
     const timers = new Map<string, ReturnType<typeof setTimeout>>()
     const later = (id: unknown) => {
       if (typeof id !== "string" || !id) return
@@ -221,6 +238,7 @@ export function RemoteStoreProvider({ children }: { children: React.ReactNode })
       .channel("coraldac-photos")
       .on("postgres_changes", { event: "*", schema: "public", table: "photos" }, (p: any) => later(p.new?.id ?? p.old?.id))
       .on("postgres_changes", { event: "*", schema: "public", table: "detections" }, (p: any) => later(p.new?.photo_id ?? p.old?.photo_id))
+      .on("postgres_changes", { event: "*", schema: "public", table: "stations" }, () => void loadStations())
       .subscribe()
     // live updates are missed while the tab sleeps or the network drops: re-read the list when it comes back
     let hiddenAt = 0
@@ -237,7 +255,7 @@ export function RemoteStoreProvider({ children }: { children: React.ReactNode })
       window.removeEventListener("online", onOnline)
       void sb.removeChannel(ch)
     }
-  }, [sb, load, refreshPhoto, retry])
+  }, [sb, load, loadStations, refreshPhoto, retry])
 
   // the viewer's own uploads are labelled "You" (cheap: only those rows are copied)
   const shown = React.useMemo(
@@ -419,9 +437,54 @@ export function RemoteStoreProvider({ children }: { children: React.ReactNode })
     await sb.auth.signOut()
   }, [sb])
 
+  // ---------- stations (V2-0481): any signed-in user creates one; only its creator renames it or deletes it while it is empty ----------
+  const stationById = React.useCallback((id: string | null | undefined) => findStation(stations, id), [stations])
+  const stationError = (e: { code?: string; message: string }) =>
+    e.code === "23505" ? "A station with that name already exists. Choose another name." : e.code === "23514" ? "Check the name (3-60 characters) and the depth (0-60 m)." : e.message
+  const createStation = React.useCallback(
+    async (st: { name: string; depthM: number; lat: number; lng: number }) => {
+      const { data, error } = await sb
+        .from("stations")
+        .insert({ name: st.name.trim(), depth_m: st.depthM, lat: st.lat, lng: st.lng })
+        .select("id,name,site,depth,depth_m,lat,lng,created_by")
+        .single()
+      if (error || !data) return { error: error ? stationError(error) : "The station was not created." }
+      const made = toStation(data)
+      setStations((all) => (all.some((s) => s.id === made.id) ? all : [...all, made]))
+      return { station: made }
+    },
+    [sb]
+  )
+  const updateStation = React.useCallback(
+    async (id: string, patch: { name: string; depthM: number }) => {
+      const { data, error } = await sb.from("stations").update({ name: patch.name.trim(), depth_m: patch.depthM }).eq("id", id).select("id")
+      if (error) return stationError(error)
+      if (!data?.length) return "Only the person who created this station can change it."
+      void loadStations()
+      return null
+    },
+    [sb, loadStations]
+  )
+  const deleteStation = React.useCallback(
+    async (id: string) => {
+      const { data, error } = await sb.from("stations").delete().eq("id", id).select("id")
+      if (error) return stationError(error)
+      if (!data?.length) return "This station still has photos (or is not yours), so it cannot be deleted."
+      setStations((all) => all.filter((s) => s.id !== id))
+      return null
+    },
+    [sb]
+  )
+
   const value = React.useMemo<StoreValue>(
     () => ({
       ready,
+      stationsReady,
+      stations,
+      stationById,
+      createStation,
+      updateStation,
+      deleteStation,
       images,
       myUploads,
       user,
@@ -435,7 +498,8 @@ export function RemoteStoreProvider({ children }: { children: React.ReactNode })
       signUp,
       signOut,
     }),
-    [ready, images, myUploads, user, getImage, ensureDetail, isOwn, uploadPhotos, updateImage, removeUpload, signIn, signUp, signOut]
+    [ready, stationsReady, stations, stationById, createStation, updateStation, deleteStation, images, myUploads, user, getImage, ensureDetail, isOwn,
+      uploadPhotos, updateImage, removeUpload, signIn, signUp, signOut]
   )
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
 }

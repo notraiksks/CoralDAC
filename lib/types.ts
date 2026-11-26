@@ -44,6 +44,8 @@ export interface Station {
   depthM: number | null
   lat: number
   lng: number
+  /** V2-0481: the user who created the station (null for the 6 survey stations, which nobody can change) */
+  createdBy?: string | null
 }
 
 export interface ReefImage {

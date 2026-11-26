@@ -30,7 +30,6 @@ import { ColonyPanel } from "@/components/image/colony-panel"
 import { ColonyPatches } from "@/components/image/colony-patches"
 import { DetectionViewer } from "@/components/image/detection-viewer"
 import { DeletePhotoButton } from "@/components/upload/delete-photo"
-import { STATIONS, stationById } from "@/lib/stations"
 import { CLASS_META, countClasses, finalClass, HEALTH_CLASSES } from "@/lib/classes"
 import { exportDetectionsCsv } from "@/lib/csv"
 import { formatCoords } from "@/lib/geo"
@@ -47,7 +46,7 @@ export function formatDate(d: string) {
 }
 
 export function ImageDetail({ id }: { id: string }) {
-  const { ready, getImage, ensureDetail, images, isOwn, updateImage } = useStore()
+  const { ready, getImage, ensureDetail, images, isOwn, updateImage, stations, stationById } = useStore()
   // colonies and outlines are loaded only for the photo being viewed (V2-0381)
   React.useEffect(() => ensureDetail(id), [id, ensureDetail])
   const router = useRouter()
@@ -431,7 +430,7 @@ export function ImageDetail({ id }: { id: string }) {
                         <SelectValue>{() => station?.name ?? "Choose a station"}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
-                        {STATIONS.map((s) => (
+                        {stations.map((s) => (
                           <SelectItem key={s.id} value={s.id}>
                             {s.name}
                           </SelectItem>

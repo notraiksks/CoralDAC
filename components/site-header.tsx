@@ -17,7 +17,6 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { stationById } from "@/lib/stations"
 import { useStore } from "@/lib/store"
 
 const SECTION: Record<string, string> = {
@@ -30,7 +29,7 @@ const SECTION: Record<string, string> = {
 
 function useCrumbs(): { href: string; label: string }[] {
   const pathname = usePathname()
-  const { getImage } = useStore()
+  const { getImage, stationById } = useStore()
   const parts = pathname.split("/").filter(Boolean)
   if (parts.length === 0) return [{ href: "/", label: "Reef map" }]
   const crumbs: { href: string; label: string }[] = []

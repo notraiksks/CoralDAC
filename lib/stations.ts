@@ -1,6 +1,8 @@
 /**
- * The six monitoring stations of the 2024 CoralNet survey and the model versions of the final pipeline: small, so every page can
- * import them. Ids are the slug of the survey station name, as in the database.
+ * The six monitoring stations of the 2024 CoralNet survey and the model versions of the final pipeline. Ids are the slug of the
+ * survey station name, as in the database.
+ * V2-0481: users can add stations, so the app reads the full list from the database (useStore().stations); this list is only the
+ * first paint before that list arrives and the page title of a survey station.
  */
 import type { Station } from "./types"
 
@@ -12,7 +14,7 @@ export const MODEL_VERSIONS: ModelVersions = {
   classifier: "ResNet50 background-gray LC/PB/DC/DCA x3 seeds, D8, SAM 2.1 outline (config 42f4825b65)",
 }
 
-export const STATIONS: Station[] = [
+export const SURVEY_STATIONS: Station[] = [
   { id: "coral-garden-d", name: "Coral Garden · Deep", site: "Coral Garden", depth: "Deep", depthM: 7.5, lat: 13.51937, lng: 120.95555 },
   { id: "coral-garden-s", name: "Coral Garden · Shallow", site: "Coral Garden", depth: "Shallow", depthM: 4, lat: 13.51937, lng: 120.95555 },
   { id: "giant-clam", name: "Giant Clam · Shallow", site: "Giant Clam", depth: "Shallow", depthM: 3.5, lat: 13.51382, lng: 120.95979 },
@@ -21,4 +23,7 @@ export const STATIONS: Station[] = [
   { id: "sapangan", name: "Sapangan · Deep", site: "Sapangan", depth: "Deep", depthM: 8, lat: 13.53176, lng: 120.95441 },
 ]
 
-export const stationById = (id: string | null | undefined) => STATIONS.find((s) => s.id === id)
+export const findStation = (list: Station[], id: string | null | undefined) => (id ? list.find((s) => s.id === id) : undefined)
+
+/** Deep from 6 m, as the database trigger (survey: shallow 3.5-4 m, deep 7.5-8 m) */
+export const depthKind = (m: number): Station["depth"] => (m >= 6 ? "Deep" : "Shallow")

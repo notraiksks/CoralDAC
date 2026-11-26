@@ -13,13 +13,15 @@ import { ClassBreakdown, Stat } from "@/components/class-ui"
 import { PageHeader } from "@/components/page-header"
 import { PaginationBar } from "@/components/pagination-bar"
 import { PhotoGrid } from "@/components/photo-grid"
-import { stationById } from "@/lib/stations"
+import { EditStationButton } from "@/components/stations/edit-station"
+import { Skeleton } from "@/components/ui/skeleton"
 import { addCounts, emptyCounts, HEALTH_CLASSES, imageCounts, impactedShare, totalOf } from "@/lib/classes"
 import { exportImagesCsv } from "@/lib/csv"
 import { formatCoords } from "@/lib/geo"
 import { compareTransects, surveyOrder } from "@/lib/photo-order"
 import { countsOnMap, fmt1, summarizeStations } from "@/lib/stats"
 import { useStore } from "@/lib/store"
+import type { Station } from "@/lib/types"
 
 const monthLabel = (m: string) => new Date(`${m}-01T00:00`).toLocaleDateString(undefined, { month: "short", year: "numeric" })
 
@@ -27,9 +29,33 @@ type Sort = "quadrat" | "colonies" | "impacted"
 /** photos per page: 6 rows of the widest grid (5 columns) */
 const PAGE_SIZE = 30
 
+/** V2-0481: stations come from the database (users add their own), so the id may still be loading or may not exist */
 export function StationDetail({ id }: { id: string }) {
-  const station = stationById(id)!
-  const { images } = useStore()
+  const { stationById, stationsReady } = useStore()
+  const station = stationById(id)
+  if (station) return <StationBody station={station} />
+  if (!stationsReady)
+    return (
+      <div className="mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6">
+        <Skeleton className="h-12 w-72 max-w-full" />
+        <Skeleton className="h-64" />
+      </div>
+    )
+  return (
+    <Empty className="m-6 border">
+      <EmptyHeader>
+        <EmptyTitle>Station not found</EmptyTitle>
+        <EmptyDescription>
+          It may have been deleted by the person who created it. <Link href="/stations">All stations</Link>
+        </EmptyDescription>
+      </EmptyHeader>
+    </Empty>
+  )
+}
+
+function StationBody({ station }: { station: Station }) {
+  const id = station.id
+  const { images, stationById, user } = useStore()
   const own = React.useMemo(() => images.filter((i) => i.stationId === id && countsOnMap(i)), [images, id])
   const s = summarizeStations([station], images)[0]
   const months = [...new Set(own.map((i) => i.date.slice(0, 7)))].sort()
@@ -90,10 +116,11 @@ export function StationDetail({ id }: { id: string }) {
         }
         actions={
           <>
+            {user && station.createdBy === user.id && <EditStationButton station={station} hasPhotos={own.length > 0} />}
             <Button variant="outline" nativeButton={false} render={<Link href={`/?station=${station.id}`} />}>
               <MapPin /> Map
             </Button>
-            <Button variant="outline" onClick={() => exportImagesCsv(own, `${station.id}-counts.csv`)}>
+            <Button variant="outline" onClick={() => exportImagesCsv(own, `${station.id}-counts.csv`, (sid) => stationById(sid)?.name)}>
               <Download /> CSV
             </Button>
           </>

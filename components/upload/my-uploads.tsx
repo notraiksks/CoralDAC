@@ -14,7 +14,6 @@ import { formatDate } from "@/components/image/image-detail"
 import { PageHeader } from "@/components/page-header"
 import { Checkbox } from "@/components/ui/checkbox"
 import { DeleteManyButton, DeletePhotoButton } from "@/components/upload/delete-photo"
-import { stationById } from "@/lib/stations"
 import { imageCounts, totalOf } from "@/lib/classes"
 import { useStore } from "@/lib/store"
 import type { PhotoStatus } from "@/lib/types"
@@ -44,7 +43,7 @@ export function StatusBadge({ status, error }: { status: Exclude<PhotoStatus, "d
 }
 
 export function MyUploads() {
-  const { myUploads: mine, user } = useStore()
+  const { myUploads: mine, user, stationById } = useStore()
   const router = useRouter()
   // V2-0479: several photos can be ticked and deleted together; ids of photos that are gone drop out by themselves
   const [picked, setPicked] = React.useState<Set<string>>(new Set())
