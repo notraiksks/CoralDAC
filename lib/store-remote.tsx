@@ -3,7 +3,7 @@
 /**
  * Shared mode (Supabase configured, V2-0373): photos, results and corrections live in the database; everyone sees finished photos,
  * the uploader also sees their own photos while they are analysed. No curator (V2-0361): only the uploader corrects a class, picks a
- * station or deletes. The 42 example photos stay in lib/archive.
+ * station or deletes.
  * Speed (V2-0381): lists load one summary row per photo (view photo_summaries: class tally, no colonies); a photo's colonies and
  * outlines load on its page (ensureDetail). Live updates refresh only the photo that changed.
  */
@@ -72,7 +72,6 @@ function toImage(r: any, me: string | null): ReefImage {
       uploadedAt: r.created_at ? String(r.created_at).slice(0, 16) : null,
       locationSource: r.location_source as LocationSource,
       models: MODEL_VERSIONS,
-      simulated: false,
     },
     status: r.status as PhotoStatus,
     error: r.error,
@@ -376,7 +375,6 @@ export function RemoteStoreProvider({ children }: { children: React.ReactNode })
 
   const value = React.useMemo<StoreValue>(
     () => ({
-      remote: true,
       ready,
       images,
       myUploads,
@@ -384,11 +382,9 @@ export function RemoteStoreProvider({ children }: { children: React.ReactNode })
       getImage,
       ensureDetail,
       isOwn,
-      addUploads: async () => {},
       uploadPhotos,
       updateImage,
       removeUpload,
-      clearUploads: async () => {},
       signIn,
       signUp,
       signOut,

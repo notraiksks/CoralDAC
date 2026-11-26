@@ -1,10 +1,9 @@
 "use client"
 
-import { useDocMode } from "@/lib/doc-mode"
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, CircleSlash, FlaskConical, Hourglass, ImagePlus, Loader2, MapPin, Navigation, PenLine, Trash2, Upload } from "lucide-react"
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, CircleSlash, Hourglass, ImagePlus, Loader2, MapPin, Navigation, PenLine, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -14,12 +13,8 @@ import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ClassBar } from "@/components/class-ui"
-import { DetectionViewer } from "@/components/image/detection-viewer"
 import { PageHeader } from "@/components/page-header"
 import { STATIONS, stationById } from "@/lib/stations"
-import { CLASS_META, countClasses, HEALTH_CLASSES, totalOf } from "@/lib/classes"
-import { apiConfigured, runInference, type InferenceResult } from "@/lib/classify"
 import { formatCoords, haversineKm, inPhilippines, nearestStation } from "@/lib/geo"
 import { parseQuadrat } from "@/lib/photo-order"
 import {
@@ -34,9 +29,8 @@ import {
   type ExifInfo,
 } from "@/lib/ingest"
 import { useStore } from "@/lib/store"
-import { MY_NAME } from "@/components/upload/my-uploads"
 import { SignInCard } from "@/components/auth/sign-in-card"
-import type { LocationSource, ReefImage } from "@/lib/types"
+import type { LocationSource } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 interface Item {
@@ -47,20 +41,18 @@ interface Item {
   height: number
   exif: ExifInfo
   quadrat: string
-  result?: InferenceResult
 }
 
-const STEPS = ["Photos", "Location", "Check results"] as const
+const STEPS = ["Photos", "Location"] as const
 /** an EXIF/manual point this close to a station is assigned to it */
 const SNAP_KM = 1
 
 export function UploadFlow() {
   const router = useRouter()
-  const { addUploads, remote, user, uploadPhotos } = useStore()
+  const { user, uploadPhotos } = useStore()
   // shared mode: are new uploads analyzed right now? (null while asking)
-  const [open, setOpen] = React.useState<boolean | null>(remote ? null : true)
+  const [open, setOpen] = React.useState<boolean | null>(null)
   React.useEffect(() => {
-    if (!remote) return
     let alive = true
     fetch("/api/uploads", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : { open: true }))
@@ -69,8 +61,7 @@ export function UploadFlow() {
     return () => {
       alive = false
     }
-  }, [remote])
-  const docMode = useDocMode()
+  }, [])
   const [step, setStep] = React.useState(0)
   const [items, setItems] = React.useState<Item[]>([])
   const [busy, setBusy] = React.useState<{ done: number; total: number; label: string } | null>(null)
@@ -179,11 +170,10 @@ export function UploadFlow() {
 
   // only coordinates typed in but malformed block the step; an empty location is allowed
   const locationOk = !(source === "manual" && manualError && (lat !== "" || lng !== ""))
-  const unassigned = items.filter((it) => !locate(it).stationId).length
   // "0" or "000" is not a quadrat; empty is fine
   const badQuadrats = items.filter((it) => it.quadrat !== "" && parseQuadrat(it.quadrat) == null).length
 
-  // shared mode: the photos go to storage and the GPU worker analyses them; results appear live on "My uploads"
+  // the photos go to storage and the GPU worker analyses them; results appear live on "My uploads"
   async function sendForAnalysis() {
     setBusy({ done: 0, total: items.length, label: "Uploading photos for analysis" })
     const payload = items.map((it) => {
@@ -220,66 +210,10 @@ export function UploadFlow() {
     } else setStep(0)
   }
 
-  async function analyze() {
-    if (remote) return sendForAnalysis()
-    setStep(2)
-    setBusy({ done: 0, total: items.length, label: "Detecting and classifying coral" })
-    const out: Item[] = []
-    for (const [n, it] of items.entries()) {
-      const result = it.result ?? (await runInference(it.file, { width: it.width, height: it.height }))
-      out.push({ ...it, result })
-      setBusy({ done: n + 1, total: items.length, label: "Detecting and classifying coral" })
-    }
-    setItems(out)
-    setBusy(null)
-    if (out.some((o) => o.result?.reason === "api-error")) toast.warning("The model server did not answer", { description: "Showing simulated results instead." })
-  }
-
-  async function submit() {
-    const now = new Date()
-    const stamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}T${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`
-    const payload = items.map((it, i) => {
-      const loc = locate(it)
-      const image: ReefImage = {
-        id: `UP-${now.getTime().toString(36)}-${i}`,
-        file: it.file.name,
-        src: it.url,
-        thumb: it.url,
-        stationId: loc.stationId,
-        lat: loc.lat,
-        lng: loc.lng,
-        date: it.exif.date || date || stamp.slice(0, 10),
-        transect,
-        quadrat: parseQuadrat(it.quadrat),
-        width: it.width,
-        height: it.height,
-        analysedRegion: it.result!.analysedRegion,
-        camera: it.exif.camera,
-        detections: it.result!.detections,
-        provenance: {
-          source: "upload",
-          uploader: MY_NAME,
-          uploadedAt: stamp,
-          locationSource: loc.source,
-          models: it.result!.models,
-          simulated: it.result!.simulated,
-        },
-      }
-      return { image, file: it.file }
-    })
-    await addUploads(payload)
-    toast.success(`${payload.length} photo${payload.length > 1 ? "s" : ""} saved`, {
-      description: unassigned
-        ? `The rest count now. ${unassigned} without a station join the map once you choose a station on the photo page.`
-        : "They count on the map now. You can correct a class or delete a photo on its page.",
-    })
-    router.push("/uploads")
-  }
-
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6 p-4 md:p-6">
       <PageHeader title="Upload photos" description="Add quadrat photos from a survey. Results count on the map right away, and you can correct or delete your own photos afterward." />
-      {remote && !user ? (
+      {!user ? (
         <SignInCard />
       ) : open === null ? (
         <Card size="sm">
@@ -503,41 +437,13 @@ export function UploadFlow() {
             {badQuadrats > 0 && (
               <p className="self-center text-sm text-destructive">Quadrat numbers go from 1 to 999 ({badQuadrats} to fix).</p>
             )}
-            <Button disabled={!locationOk || badQuadrats > 0} onClick={analyze}>
-              {remote ? "Upload and analyze" : "Analyze"} {items.length} photo{items.length === 1 ? "" : "s"} <ArrowRight data-icon="inline-end" />
+            <Button disabled={!locationOk || badQuadrats > 0} onClick={sendForAnalysis}>
+              Upload and analyze {items.length} photo{items.length === 1 ? "" : "s"} <ArrowRight data-icon="inline-end" />
             </Button>
           </div>
         </div>
       )}
 
-      {step === 2 && !busy && (
-        <div className="space-y-4">
-          {items.some((i) => i.result?.simulated) && !docMode && (
-            <Alert>
-              <FlaskConical className="text-pb" />
-              <AlertTitle>Simulated results</AlertTitle>
-              <AlertDescription>
-                {apiConfigured
-                  ? "The model server could not be reached, so these boxes and classes are simulated."
-                  : "No model server is connected yet, so these boxes and classes are simulated to show the workflow."}
-              </AlertDescription>
-            </Alert>
-          )}
-          <div className="grid gap-4 md:grid-cols-2">
-            {items.map((it) => (
-              <ResultCard key={it.key} item={it} stationName={stationById(locate(it)?.stationId)?.name} />
-            ))}
-          </div>
-          <div className="flex justify-between">
-            <Button variant="outline" onClick={() => setStep(1)}>
-              <ArrowLeft data-icon="inline-start" /> Back
-            </Button>
-            <Button onClick={submit}>
-              <Upload data-icon="inline-start" /> Save {items.length} photo{items.length === 1 ? "" : "s"}
-            </Button>
-          </div>
-        </div>
-      )}
       </>
       )}
     </div>
@@ -656,40 +562,3 @@ function LocationSummary({ items, locate, ok }: { items: Item[]; locate: (it: It
 }
 
 type Located = { lat: number | null; lng: number | null; stationId: string | null; source: LocationSource }
-
-function ResultCard({ item, stationName }: { item: Item; stationName?: string }) {
-  const [boxes, setBoxes] = React.useState(true)
-  const dets = item.result?.detections ?? []
-  const c = countClasses(dets)
-  return (
-    <Card size="sm">
-      <CardHeader className="flex flex-row items-center gap-2">
-        <div className="min-w-0 flex-1">
-          <CardTitle className="truncate">{item.file.name}</CardTitle>
-          <CardDescription>{stationName ?? "No station"}</CardDescription>
-        </div>
-        <Button variant="ghost" size="sm" aria-pressed={boxes} onClick={() => setBoxes((b) => !b)}>
-          {boxes ? "Hide boxes" : "Show boxes"}
-        </Button>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <DetectionViewer
-          image={{ src: item.url, file: item.file.name, width: item.width, height: item.height, analysedRegion: item.result?.analysedRegion }}
-          detections={dets}
-          showBoxes={boxes}
-        />
-        <ClassBar counts={c} />
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-          {HEALTH_CLASSES.map((k) => (
-            <span key={k} className="tabular inline-flex items-center gap-1.5">
-              <span className="size-2.5 rounded-full" style={{ background: CLASS_META[k].color }} /> {k} {c[k]}
-            </span>
-          ))}
-          <span className="ml-auto text-muted-foreground">
-            {totalOf(c)} colonies · {dets.length - totalOf(c)} not coral
-          </span>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
