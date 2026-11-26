@@ -42,10 +42,10 @@ function StatusBadge({ status, error }: { status: Exclude<PhotoStatus, "done">; 
 }
 
 export function MyUploads() {
-  const { myUploads: mine, remote, user } = useStore()
+  const { myUploads: mine, user } = useStore()
   const router = useRouter()
 
-  if (remote && !user)
+  if (!user)
     return (
       <div className="mx-auto w-full max-w-6xl space-y-5 p-4 md:p-6">
         <PageHeader title="My uploads" description="Sign in to see the photos you uploaded." />
@@ -63,11 +63,7 @@ export function MyUploads() {
     <div className="mx-auto w-full max-w-6xl space-y-5 p-4 md:p-6">
       <PageHeader
         title="My uploads"
-        description={
-          remote
-            ? "Photos you uploaded. Each one is analyzed on the GPU and counts on the map once it has a station. Open a photo to correct a class or delete it."
-            : "Photos you uploaded from this browser. They count on the map as soon as they have a station. Open a photo to correct a class or delete it."
-        }
+        description="Photos you uploaded. Each one is analyzed and counts on the map once it has a station. Open a photo to correct a class or delete it."
         actions={
           <div className="flex gap-2">
             {mine.length > 0 && action}

@@ -1,7 +1,6 @@
 /**
  * The six monitoring stations of the 2024 CoralNet survey and the model versions of the final pipeline: small, so every page can
- * import them without the example-photo archive (lib/archive.ts, about 230 KB), which only the local mode needs (V2-0396, speed).
- * Same values and ids as before (built from lib/data/demo-index.json, ids = slug of the survey station name, as in the database).
+ * import them. Ids are the slug of the survey station name, as in the database.
  */
 import type { Station } from "./types"
 

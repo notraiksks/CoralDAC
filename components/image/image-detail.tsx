@@ -54,8 +54,6 @@ export function ImageDetail({ id }: { id: string }) {
   const img = getImage(id)
   const [showBoxes, setShowBoxes] = React.useState(true)
   const [showOutlines, setShowOutlines] = React.useState(true)
-  // detections the filter rejected: hidden like on every other photo; the uploader can switch them on to correct one (V2-0475)
-  const [othersOn, setOthersOn] = React.useState(false)
   const [minConf, setMinConf] = React.useState(0)
   const [hover, setHover] = React.useState<string | null>(null)
   // the picked colony belongs to one photo, so stepping to another photo closes its panel
@@ -160,11 +158,10 @@ export function ImageDetail({ id }: { id: string }) {
   }
 
   const counts = countClasses(img.detections)
-  // Detections the filter rejected as not coral are not shown (Rai, V2-0385): the page is about the coral colonies.
-  // The uploader can switch them on for their own photo (V2-0475), otherwise a wrong "not coral" could never be corrected.
+  // Detections the filter rejected as not coral are never shown, to anyone (Rai, V2-0385 and V2-0476): the page is about the coral
+  // colonies. They stay in the database and in the "filtered as not coral" counts.
   const nOthers = img.detections.filter((d) => finalClass(d) === "OTHERS").length
-  const showOthers = canEdit && othersOn
-  const visible = img.detections.filter((d) => d.detConf >= minConf && (showOthers || finalClass(d) !== "OTHERS"))
+  const visible = img.detections.filter((d) => d.detConf >= minConf && finalClass(d) !== "OTHERS")
   const active = hover ?? picked
 
   const setClass = (det: Detection, cls: HealthClass | "OTHERS") => {
@@ -248,12 +245,6 @@ export function ImageDetail({ id }: { id: string }) {
               <Switch checked={showOutlines} onCheckedChange={setShowOutlines} /> Outlines
               <kbd className="rounded border px-1 text-[11px] text-muted-foreground">O</kbd>
             </Label>
-            {canEdit && nOthers > 0 && (
-              <Label className="gap-2 text-sm font-normal" title="Detections the filter rejected as not coral. Only you see them, so you can correct one.">
-                <Switch checked={othersOn} onCheckedChange={setOthersOn} /> Not coral
-                <span className="tabular text-xs text-muted-foreground">({nOthers})</span>
-              </Label>
-            )}
             <div className="flex min-w-56 flex-1 items-center gap-3">
               <span className="text-sm whitespace-nowrap text-muted-foreground">Detector confidence ≥</span>
               <Slider
@@ -286,11 +277,6 @@ export function ImageDetail({ id }: { id: string }) {
                 <ClassDot cls={k} /> {CLASS_META[k].label}
               </span>
             ))}
-            {showOthers && (
-              <span className="inline-flex items-center gap-1.5">
-                <span className="inline-block h-0 w-3 border-t-2 border-dashed border-others" /> Not coral (only you see these; not counted)
-              </span>
-            )}
           </div>
 
         </div>

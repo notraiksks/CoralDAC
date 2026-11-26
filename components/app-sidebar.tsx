@@ -28,11 +28,11 @@ const EXPLORE = [
 export function AppSidebar() {
   const pathname = usePathname()
   const router = useRouter()
-  const { remote, user, signOut } = useStore()
+  const { user, signOut } = useStore()
   // "/upload" must not light up on "/uploads": a tab is active on its own path and the pages below it only
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`))
   // signed-out visitors only explore (Rai, V2-0378); the Contribute button signs them in or up
-  const signedIn = !remote || Boolean(user)
+  const signedIn = Boolean(user)
   const username = user?.email?.replace(/@coraldac\.local$/, "")
 
   const work = signedIn
@@ -107,7 +107,7 @@ export function AppSidebar() {
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
             <SidebarMenu>
-              {remote && user && (
+              {user && (
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     onClick={async () => {

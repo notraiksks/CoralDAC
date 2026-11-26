@@ -85,8 +85,6 @@ export interface Provenance {
   uploadedAt: string | null
   locationSource: LocationSource
   models: { detector: string; filter: string; classifier: string }
-  /** true when Stage 2 output is simulated (no trained model / API yet) */
-  simulated: boolean
 }
 
 export type ClassCounts = Record<HealthClass, number>

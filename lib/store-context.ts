@@ -18,12 +18,10 @@ export interface UploadMeta {
 }
 
 export interface StoreValue {
-  /** true when photos are shared through the database (Supabase configured); false = this browser only */
-  remote: boolean
   ready: boolean
-  /** photos that count on the map and the pages: finished uploads + the example archive */
+  /** photos that count on the map and the pages: the survey photos and finished uploads */
   images: ReefImage[]
-  /** the signed-in visitor's own uploads in every state (or this browser's uploads in local mode) */
+  /** the signed-in visitor's own uploads in every state */
   myUploads: ReefImage[]
   user: { id: string; email: string | null } | null
   getImage: (id: string) => ReefImage | undefined
@@ -31,13 +29,10 @@ export interface StoreValue {
   ensureDetail: (id: string) => void
   /** only the uploader may correct, assign a station or delete */
   isOwn: (img: ReefImage) => boolean
-  /** local mode: photo + results stored in this browser */
-  addUploads: (items: { image: ReefImage; file: File }[]) => Promise<void>
-  /** shared mode: sends the photos for analysis on the GPU worker */
+  /** sends the photos for analysis */
   uploadPhotos: (items: { file: File; meta: UploadMeta }[], onProgress?: (done: number) => void) => Promise<{ sent: number; errors: string[] }>
   updateImage: (img: ReefImage) => void
   removeUpload: (id: string) => Promise<void>
-  clearUploads: () => Promise<void>
   /** signs in with an account made by the project (username + password, no e-mail); returns an error message or null */
   signIn: (username: string, password: string) => Promise<string | null>
   /** creates an account (username + password; e-mail optional, kept only as contact); returns an error message or null */

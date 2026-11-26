@@ -1,4 +1,4 @@
-import { stationById } from "./archive"
+import { stationById } from "./stations"
 import { finalClass, HEALTH_CLASSES, imageCounts, imageOthers } from "./classes"
 import type { ReefImage } from "./types"
 
@@ -21,11 +21,11 @@ export function downloadCsv(filename: string, rows: (string | number | null | un
 
 /** One row per image with its class-count vector (proposal 4.2.2.6 record layout). */
 export function exportImagesCsv(images: ReefImage[], filename: string) {
-  const head = ["image_id", "file", "station", "date", "transect", "quadrat", "latitude", "longitude", ...HEALTH_CLASSES.map((k) => `${k}_count`), "others_count", "simulated"]
+  const head = ["image_id", "file", "station", "date", "transect", "quadrat", "latitude", "longitude", ...HEALTH_CLASSES.map((k) => `${k}_count`), "others_count"]
   const rows = images.map((i) => {
     const c = imageCounts(i)
     const others = imageOthers(i)
-    return [i.id, i.file, stationById(i.stationId)?.name ?? "", i.date, i.transect, i.quadrat, i.lat?.toFixed(5) ?? "", i.lng?.toFixed(5) ?? "", ...HEALTH_CLASSES.map((k) => c[k]), others, i.provenance.simulated ? 1 : 0]
+    return [i.id, i.file, stationById(i.stationId)?.name ?? "", i.date, i.transect, i.quadrat, i.lat?.toFixed(5) ?? "", i.lng?.toFixed(5) ?? "", ...HEALTH_CLASSES.map((k) => c[k]), others]
   })
   downloadCsv(filename, [head, ...rows])
 }
