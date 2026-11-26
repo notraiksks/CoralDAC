@@ -21,6 +21,7 @@ import { STATIONS, stationById } from "@/lib/stations"
 import { CLASS_META, countClasses, HEALTH_CLASSES, totalOf } from "@/lib/classes"
 import { apiConfigured, runInference, type InferenceResult } from "@/lib/classify"
 import { formatCoords, haversineKm, inPhilippines, nearestStation } from "@/lib/geo"
+import { parseQuadrat } from "@/lib/photo-order"
 import {
   ACCEPT_BATCH,
   expandZip,
@@ -81,7 +82,8 @@ export function UploadFlow() {
   const [lat, setLat] = React.useState("")
   const [lng, setLng] = React.useState("")
   const [date, setDate] = React.useState("")
-  const [transect, setTransect] = React.useState("T1")
+  // "" = not given (V2-0475: no silent T1 for photos whose transect is unknown)
+  const [transect, setTransect] = React.useState("")
 
   const withGps = items.filter((i) => i.exif.lat != null).length
 
@@ -178,6 +180,8 @@ export function UploadFlow() {
   // only coordinates typed in but malformed block the step; an empty location is allowed
   const locationOk = !(source === "manual" && manualError && (lat !== "" || lng !== ""))
   const unassigned = items.filter((it) => !locate(it).stationId).length
+  // "0" or "000" is not a quadrat; empty is fine
+  const badQuadrats = items.filter((it) => it.quadrat !== "" && parseQuadrat(it.quadrat) == null).length
 
   // shared mode: the photos go to storage and the GPU worker analyses them; results appear live on "My uploads"
   async function sendForAnalysis() {
@@ -193,7 +197,7 @@ export function UploadFlow() {
           locationSource: loc.source,
           takenOn: it.exif.date || date || null,
           transect: transect || null,
-          quadrat: it.quadrat ? Number(it.quadrat) : null,
+          quadrat: parseQuadrat(it.quadrat),
           camera: it.exif.camera || null,
           exifLat: it.exif.lat,
           exifLng: it.exif.lng,
@@ -246,7 +250,7 @@ export function UploadFlow() {
         lng: loc.lng,
         date: it.exif.date || date || stamp.slice(0, 10),
         transect,
-        quadrat: it.quadrat ? Number(it.quadrat) : null,
+        quadrat: parseQuadrat(it.quadrat),
         width: it.width,
         height: it.height,
         analysedRegion: it.result!.analysedRegion,
@@ -444,11 +448,12 @@ export function UploadFlow() {
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="transect">Transect</Label>
-                  <Select value={transect} onValueChange={(v) => setTransect(String(v))}>
+                  <Select value={transect || "none"} onValueChange={(v) => setTransect(v === "none" ? "" : String(v))}>
                     <SelectTrigger id="transect" className="w-full">
-                      <SelectValue />
+                      <SelectValue>{(v: string) => (v === "none" ? "Not given" : v)}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="none">Not given</SelectItem>
                       {["T1", "T2", "T3", "T4", "T5"].map((t) => (
                         <SelectItem key={t} value={t}>
                           {t}
@@ -461,6 +466,9 @@ export function UploadFlow() {
 
               <div className="space-y-2 border-t pt-4">
                 <Label>Quadrat numbers (optional)</Label>
+                <p className="text-xs text-muted-foreground">
+                  1 to 999. Leave empty if you do not know it; you can add it later on the photo page.
+                </p>
                 <ul className="grid gap-2 sm:grid-cols-2">
                   {items.map((it, i) => (
                     <li key={it.key} className="flex items-center gap-2">
@@ -472,6 +480,7 @@ export function UploadFlow() {
                         inputMode="numeric"
                         className="h-8 w-20"
                         placeholder="Q"
+                        aria-invalid={(it.quadrat !== "" && parseQuadrat(it.quadrat) == null) || undefined}
                         value={it.quadrat}
                         onChange={(e) => {
                           const v = e.target.value.replace(/\D/g, "").slice(0, 3)
@@ -491,7 +500,10 @@ export function UploadFlow() {
             <Button variant="outline" onClick={() => setStep(0)}>
               <ArrowLeft data-icon="inline-start" /> Back
             </Button>
-            <Button disabled={!locationOk} onClick={analyze}>
+            {badQuadrats > 0 && (
+              <p className="self-center text-sm text-destructive">Quadrat numbers go from 1 to 999 ({badQuadrats} to fix).</p>
+            )}
+            <Button disabled={!locationOk || badQuadrats > 0} onClick={analyze}>
               {remote ? "Upload and analyze" : "Analyze"} {items.length} photo{items.length === 1 ? "" : "s"} <ArrowRight data-icon="inline-end" />
             </Button>
           </div>

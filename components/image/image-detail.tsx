@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -33,6 +34,7 @@ import { STATIONS, stationById } from "@/lib/stations"
 import { CLASS_META, countClasses, finalClass, HEALTH_CLASSES } from "@/lib/classes"
 import { exportDetectionsCsv } from "@/lib/csv"
 import { formatCoords } from "@/lib/geo"
+import { parseQuadrat, quadratLabel, surveyOrder } from "@/lib/photo-order"
 import { useStore } from "@/lib/store"
 import type { Detection, HealthClass, ReefImage } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -52,6 +54,8 @@ export function ImageDetail({ id }: { id: string }) {
   const img = getImage(id)
   const [showBoxes, setShowBoxes] = React.useState(true)
   const [showOutlines, setShowOutlines] = React.useState(true)
+  // detections the filter rejected: hidden like on every other photo; the uploader can switch them on to correct one (V2-0475)
+  const [othersOn, setOthersOn] = React.useState(false)
   const [minConf, setMinConf] = React.useState(0)
   const [hover, setHover] = React.useState<string | null>(null)
   // the picked colony belongs to one photo, so stepping to another photo closes its panel
@@ -69,11 +73,13 @@ export function ImageDetail({ id }: { id: string }) {
   const rowRefs = React.useRef<Record<string, HTMLLIElement | null>>({})
   const viewerRef = React.useRef<HTMLDivElement | null>(null)
 
-  // neighbours within the same station, in archive order
-  const siblings = React.useMemo(
-    () => (img ? images.filter((i) => i.stationId === img.stationId && isOwn(i) === isOwn(img)) : []),
-    [images, img, isOwn]
-  )
+  // neighbours: every analyzed photo of the same station, survey photos and uploads together, in survey order (V2-0475);
+  // a photo without a station steps through the viewer's own photos without a station
+  const siblings = React.useMemo(() => {
+    if (!img) return []
+    const same = images.filter((i) => (img.stationId ? i.stationId === img.stationId : i.stationId === null && isOwn(i)))
+    return (same.some((i) => i.id === img.id) ? same : [...same, img]).sort(surveyOrder)
+  }, [images, img, isOwn])
   const idx = siblings.findIndex((s) => s.id === id)
   const prev = idx > 0 ? siblings[idx - 1] : null
   const next = idx >= 0 && idx < siblings.length - 1 ? siblings[idx + 1] : null
@@ -117,13 +123,49 @@ export function ImageDetail({ id }: { id: string }) {
   }
 
   const station = stationById(img.stationId)
+  const canEdit = isOwn(img)
+
+  // an upload that is not analyzed yet has no display copy and no colonies: say where it is instead of a broken photo
+  if (img.status && img.status !== "done") {
+    return (
+      <div className="mx-auto w-full max-w-3xl space-y-4 p-4 md:p-6">
+        <h1 className="truncate text-xl font-semibold">{img.file}</h1>
+        <Card size="sm">
+          <CardContent className="space-y-2 text-sm">
+            {img.status === "failed" ? (
+              <>
+                <p className="font-medium text-destructive">The analysis of this photo failed.</p>
+                {img.error && <p className="break-words text-muted-foreground">{img.error}</p>}
+                <p className="text-muted-foreground">Delete it and upload it again, or ask the project team.</p>
+              </>
+            ) : (
+              <p>
+                {img.status === "running"
+                  ? "This photo is being analyzed. The results appear here in about a minute."
+                  : img.status === "uploading"
+                    ? "This photo is still uploading."
+                    : "This photo is waiting for analysis. It starts as soon as the analysis server is running."}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+        <div className="flex gap-2">
+          <Button variant="outline" nativeButton={false} render={<Link href="/uploads" />}>
+            <ChevronLeft /> My uploads
+          </Button>
+          {canEdit && <DeletePhotoButton img={img} onDeleted={() => router.push("/uploads")} />}
+        </div>
+      </div>
+    )
+  }
+
   const counts = countClasses(img.detections)
   // Detections the filter rejected as not coral are not shown (Rai, V2-0385): the page is about the coral colonies.
-  // Exception: the uploader still sees them on their own photo, otherwise a wrong "not coral" could never be corrected.
-  const showOthers = isOwn(img)
+  // The uploader can switch them on for their own photo (V2-0475), otherwise a wrong "not coral" could never be corrected.
+  const nOthers = img.detections.filter((d) => finalClass(d) === "OTHERS").length
+  const showOthers = canEdit && othersOn
   const visible = img.detections.filter((d) => d.detConf >= minConf && (showOthers || finalClass(d) !== "OTHERS"))
   const active = hover ?? picked
-  const canEdit = isOwn(img)
 
   const setClass = (det: Detection, cls: HealthClass | "OTHERS") => {
     const modelClass = det.filter === "OTHERS" || !det.health ? "OTHERS" : det.health
@@ -174,7 +216,7 @@ export function ImageDetail({ id }: { id: string }) {
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-xl font-semibold">
-            {station?.name ?? "Unassigned"} · {img.transect} · Quadrat {img.quadrat ?? "–"}
+            {station?.name ?? "No station"} · {quadratLabel(img, false)}
           </h1>
           <p className="text-sm text-muted-foreground">
             {img.file} · {formatDate(img.date)}
@@ -185,7 +227,7 @@ export function ImageDetail({ id }: { id: string }) {
           <Button variant="outline" size="icon" aria-label="Previous photo" disabled={!prev} nativeButton={false} render={prev ? <Link href={`/images/${prev.id}`} /> : <span />}>
             <ChevronLeft />
           </Button>
-          <span className="tabular px-1 text-sm text-muted-foreground">
+          <span className="tabular px-1 text-sm text-muted-foreground" title={station ? `Photos of ${station.name}, in survey order` : "Your photos without a station"}>
             {idx + 1} / {siblings.length}
           </span>
           <Button variant="outline" size="icon" aria-label="Next photo" disabled={!next} nativeButton={false} render={next ? <Link href={`/images/${next.id}`} /> : <span />}>
@@ -206,6 +248,12 @@ export function ImageDetail({ id }: { id: string }) {
               <Switch checked={showOutlines} onCheckedChange={setShowOutlines} /> Outlines
               <kbd className="rounded border px-1 text-[11px] text-muted-foreground">O</kbd>
             </Label>
+            {canEdit && nOthers > 0 && (
+              <Label className="gap-2 text-sm font-normal" title="Detections the filter rejected as not coral. Only you see them, so you can correct one.">
+                <Switch checked={othersOn} onCheckedChange={setOthersOn} /> Not coral
+                <span className="tabular text-xs text-muted-foreground">({nOthers})</span>
+              </Label>
+            )}
             <div className="flex min-w-56 flex-1 items-center gap-3">
               <span className="text-sm whitespace-nowrap text-muted-foreground">Detector confidence ≥</span>
               <Slider
@@ -240,7 +288,7 @@ export function ImageDetail({ id }: { id: string }) {
             ))}
             {showOthers && (
               <span className="inline-flex items-center gap-1.5">
-                <span className="inline-block h-0 w-3 border-t-2 border-dashed border-others" /> Not coral (only you see these)
+                <span className="inline-block h-0 w-3 border-t-2 border-dashed border-others" /> Not coral (only you see these; not counted)
               </span>
             )}
           </div>
@@ -272,7 +320,11 @@ export function ImageDetail({ id }: { id: string }) {
             <CardContent className="px-0">
               {visible.length === 0 ? (
                 <p className="py-6 text-center text-sm text-muted-foreground">
-                  {img.detections.length === 0 ? "No colonies were detected in this photo." : "No detections match the filters above."}
+                  {img.detections.length === 0
+                    ? "No colonies were detected in this photo."
+                    : minConf === 0 && nOthers === img.detections.length
+                      ? `No coral colonies: the ${nOthers} detection${nOthers === 1 ? " was" : "s were"} filtered out as not coral.`
+                      : "No detections match the filters above."}
                 </p>
               ) : (
                 <div>
@@ -409,7 +461,15 @@ export function ImageDetail({ id }: { id: string }) {
                   )}
                 </Row>
                 <Row k="Depth">{station?.depthM ? `${station.depthM} m` : "–"}</Row>
-                <Row k="Captured">{formatDate(img.date)}</Row>
+                {canEdit ? (
+                  <SurveyFields key={img.id} img={img} onSave={(patch) => updateImage({ ...img, ...patch })} />
+                ) : (
+                  <>
+                    <Row k="Transect">{img.transect || "Not given"}</Row>
+                    <Row k="Quadrat">{img.quadrat ?? "Not given"}</Row>
+                    <Row k="Captured">{formatDate(img.date)}</Row>
+                  </>
+                )}
                 <Row k="Camera">{img.camera || "–"}</Row>
                 <Row k="GPS">
                   <span className="tabular">{formatCoords(img.lat, img.lng)}</span>
@@ -427,6 +487,106 @@ export function ImageDetail({ id }: { id: string }) {
         </div>
       </div>
     </div>
+  )
+}
+
+export const TRANSECTS = ["T1", "T2", "T3", "T4", "T5"]
+
+/** the uploader's own photo: transect, quadrat number and date can be set or corrected after upload (V2-0475) */
+function SurveyFields({ img, onSave }: { img: ReefImage; onSave: (patch: Pick<ReefImage, "transect" | "quadrat" | "date">) => void }) {
+  const [q, setQ] = React.useState(img.quadrat != null ? String(img.quadrat) : "")
+  // follow the saved value (another tab, a refused save) unless the field is being edited
+  const [editing, setEditing] = React.useState(false)
+  const shownQ = editing ? q : img.quadrat != null ? String(img.quadrat) : ""
+  const qError = q.trim() !== "" && parseQuadrat(q) == null
+  const base = { transect: img.transect, quadrat: img.quadrat, date: img.date }
+  const commitQ = () => {
+    setEditing(false)
+    if (qError) {
+      setQ(img.quadrat != null ? String(img.quadrat) : "")
+      toast.error("Quadrat number not saved", { description: "Use a whole number from 1 to 999, or leave it empty." })
+      return
+    }
+    const next = q.trim() === "" ? null : parseQuadrat(q)
+    if (next !== img.quadrat) {
+      onSave({ ...base, quadrat: next })
+      toast.success(next == null ? "Quadrat number removed" : `Quadrat set to ${next}`)
+    }
+  }
+  const [d, setD] = React.useState(img.date.slice(0, 10))
+  const [editingDate, setEditingDate] = React.useState(false)
+  const today = new Date().toISOString().slice(0, 10)
+  const commitDate = () => {
+    setEditingDate(false)
+    if (d === img.date.slice(0, 10)) return
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || d < "1990-01-01" || d > today || Number.isNaN(new Date(`${d}T00:00`).getTime())) {
+      toast.error("Date not saved", { description: "Choose a real date, not in the future." })
+      return
+    }
+    onSave({ ...base, date: d })
+    toast.success(`Date set to ${formatDate(d)}`)
+  }
+  const transects = img.transect && !TRANSECTS.includes(img.transect) ? [...TRANSECTS, img.transect] : TRANSECTS
+  return (
+    <>
+      <Row k="Transect">
+        <Select
+          value={img.transect || "none"}
+          onValueChange={(v) => {
+            const t = v === "none" ? "" : String(v)
+            if (t === img.transect) return
+            onSave({ ...base, transect: t })
+            toast.success(t ? `Transect set to ${t}` : "Transect removed")
+          }}
+        >
+          <SelectTrigger size="sm" className="h-7 w-full" aria-label="Transect of this photo">
+            <SelectValue>{(v: string) => (v === "none" ? "Not given" : v)}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">Not given</SelectItem>
+            {transects.map((t) => (
+              <SelectItem key={t} value={t}>
+                {t}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Row>
+      <Row k="Quadrat">
+        <Input
+          aria-label="Quadrat number of this photo"
+          aria-invalid={qError || undefined}
+          inputMode="numeric"
+          className="h-7"
+          placeholder="Not given"
+          value={shownQ}
+          onFocus={() => {
+            setQ(img.quadrat != null ? String(img.quadrat) : "")
+            setEditing(true)
+          }}
+          onChange={(e) => setQ(e.target.value.replace(/\D/g, "").slice(0, 3))}
+          onBlur={commitQ}
+          onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+        />
+      </Row>
+      <Row k="Captured">
+        <Input
+          type="date"
+          aria-label="Date the photo was taken"
+          className="h-7"
+          value={editingDate ? d : img.date.slice(0, 10)}
+          min="1990-01-01"
+          max={today}
+          onFocus={() => {
+            setD(img.date.slice(0, 10))
+            setEditingDate(true)
+          }}
+          onChange={(e) => setD(e.target.value)}
+          onBlur={commitDate}
+          onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+        />
+      </Row>
+    </>
   )
 }
 

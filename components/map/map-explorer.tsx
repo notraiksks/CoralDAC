@@ -21,6 +21,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ClassBreakdown, Stat } from "@/components/class-ui"
 import { STATIONS } from "@/lib/stations"
 import { impactedShare } from "@/lib/classes"
+import { quadratLabel } from "@/lib/photo-order"
 import { countsOnMap, fmt1, formatHeat, HEAT_TARGETS, heatMax, summarizeStations, type HeatMetric, type HeatTarget, type StationSummary } from "@/lib/stats"
 import { useStore } from "@/lib/store"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -394,9 +395,10 @@ function StationPanel({ s, onClose }: { s: StationSummary; onClose: () => void }
                   href={`/images/${p.id}`}
                   className="group relative block aspect-square overflow-hidden rounded-md bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
                 >
-                  <Image src={p.thumb} alt={`${p.file}, ${p.transect} quadrat ${p.quadrat}`} fill sizes="120px" className="object-cover transition-transform group-hover:scale-105" unoptimized />
-                  <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-1.5 pt-4 pb-1 text-[11px] font-medium text-white">
-                    {p.transect} · Q{p.quadrat}
+                  <Image src={p.thumb} alt={`${p.file}, ${quadratLabel(p)}`} fill sizes="120px" className="object-cover transition-transform group-hover:scale-105" unoptimized />
+                  <span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/70 to-transparent px-1.5 pt-4 pb-1 text-[11px] font-medium text-white">
+                    {p.provenance.source === "upload" ? "Upload · " : ""}
+                    {quadratLabel(p)}
                   </span>
                 </Link>
               </li>

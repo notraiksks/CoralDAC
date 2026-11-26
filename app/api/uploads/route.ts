@@ -77,7 +77,8 @@ export async function POST(request: Request) {
 
   const id = randomUUID()
   const key = `originals/${id}.${TYPES[type]}`
-  const quadrat = Number.isInteger(b.quadrat) ? (b.quadrat as number) : null
+  // V2-0475: quadrat numbers 1..999 only (the form sends null when empty); anything else is stored as "not given"
+  const quadrat = Number.isInteger(b.quadrat) && (b.quadrat as number) >= 1 && (b.quadrat as number) <= 999 ? (b.quadrat as number) : null
   const takenOn = typeof b.takenOn === "string" && /^\d{4}-\d{2}-\d{2}$/.test(b.takenOn) ? b.takenOn : null
   const { error } = await db.from("photos").insert({
     id, owner: user.id, source: "upload", status: "uploading", station_id: stationId, lat, lng, location_source: locationSource,
