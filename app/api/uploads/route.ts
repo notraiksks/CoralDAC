@@ -51,6 +51,19 @@ export async function POST(request: Request) {
   if ((inSurvey ?? 0) > 0 || isTestPhotoName(name))
     return Response.json({ error: `${name} is already part of the 2024 survey on the map.` }, { status: 422 })
 
+  // V2-0482: the same file name from the same account within 10 minutes is a repeated click or a second tab, not a new photo
+  const recent = new Date(Date.now() - 10 * 60 * 1000).toISOString()
+  const { data: mine } = await db.from("photos").select("id").eq("owner", user.id).neq("status", "failed").gte("created_at", recent)
+  if (mine?.length) {
+    const { count: same } = await db
+      .from("photo_private")
+      .select("photo_id", { count: "exact", head: true })
+      .in("photo_id", mine.map((p) => p.id))
+      .eq("original_name", name)
+    if ((same ?? 0) > 0)
+      return Response.json({ error: `${name} was already uploaded in the last 10 minutes. Check My uploads.` }, { status: 409 })
+  }
+
   // open sign-up (V2-0378): cap GPU use per account
   const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString()
   const { count } = await db.from("photos").select("id", { count: "exact", head: true }).eq("owner", user.id).gte("created_at", since)

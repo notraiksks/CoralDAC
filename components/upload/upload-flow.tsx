@@ -205,7 +205,20 @@ export function UploadFlow() {
     : null
 
   // the photos go to storage and the GPU worker analyses them; results appear live on "My uploads"
+  // V2-0482: one batch at a time. The ref stops a second click before React re-renders the disabled button (repeated clicks had
+  // sent the same batch up to 5 times).
+  const sending = React.useRef(false)
   async function sendForAnalysis() {
+    if (sending.current) return
+    sending.current = true
+    try {
+      await sendBatch()
+    } finally {
+      sending.current = false
+    }
+  }
+
+  async function sendBatch() {
     setBusy({ done: 0, total: items.length, label: "Uploading photos for analysis" })
     const payload = items.map((it) => {
       const loc = locate(it)
@@ -490,14 +503,15 @@ export function UploadFlow() {
           <LocationSummary items={items} locate={locate} ok={locationOk} />
 
           <div className="flex justify-between md:col-span-2">
-            <Button variant="outline" onClick={() => setStep(0)}>
+            <Button variant="outline" disabled={!!busy} onClick={() => setStep(0)}>
               <ArrowLeft data-icon="inline-start" /> Back
             </Button>
             {badQuadrats > 0 && (
               <p className="self-center text-sm text-destructive">Quadrat numbers go from 1 to 999 ({badQuadrats} to fix).</p>
             )}
-            <Button disabled={!locationOk || badQuadrats > 0} onClick={sendForAnalysis}>
-              Upload and analyze {items.length} photo{items.length === 1 ? "" : "s"} <ArrowRight data-icon="inline-end" />
+            <Button disabled={!locationOk || badQuadrats > 0 || !!busy} onClick={sendForAnalysis}>
+              {busy ? <Loader2 className="animate-spin" data-icon="inline-start" /> : null}
+              {busy ? "Uploading…" : "Upload and analyze"} {items.length} photo{items.length === 1 ? "" : "s"} <ArrowRight data-icon="inline-end" />
             </Button>
           </div>
         </div>
