@@ -177,6 +177,53 @@ function Tiles({ basemap, dark }: { basemap: Basemap; dark: boolean }) {
   )
 }
 
+/**
+ * V2-0478: the latitude / longitude under the pointer (or the last tapped point on a touch screen), bottom-left. Clicking the map
+ * copies "lat, lng" in decimal degrees, the format the upload page takes under "Enter coordinates" (for photos without GPS).
+ */
+function CursorCoords() {
+  const [pos, setPos] = React.useState<{ lat: number; lng: number } | null>(null)
+  const [copied, setCopied] = React.useState(false)
+  const timer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  React.useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current)
+  }, [])
+  const wrap = (p: L.LatLng) => ({ lat: p.lat, lng: ((((p.lng + 180) % 360) + 360) % 360) - 180 })
+  useMapEvents({
+    mousemove: (e) => setPos(wrap(e.latlng)),
+    click: (e) => {
+      const p = wrap(e.latlng)
+      setPos(p)
+      const text = `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`
+      navigator.clipboard?.writeText(text).then(
+        () => {
+          setCopied(true)
+          if (timer.current) clearTimeout(timer.current)
+          timer.current = setTimeout(() => setCopied(false), 1500)
+        },
+        () => {} // no clipboard (insecure page, permission): the numbers stay on screen to copy by hand
+      )
+    },
+  })
+  return (
+    <div
+      aria-live="polite"
+      className="pointer-events-none absolute bottom-3 left-3 z-[500] rounded-md border bg-card/90 px-2.5 py-1.5 font-mono text-xs shadow-sm backdrop-blur"
+    >
+      {pos ? (
+        <>
+          <span className="tabular select-all">
+            {pos.lat.toFixed(5)}, {pos.lng.toFixed(5)}
+          </span>
+          <span className="ml-2 font-sans text-muted-foreground">{copied ? "Copied" : "Click to copy"}</span>
+        </>
+      ) : (
+        <span className="font-sans text-muted-foreground">Point at the map to see coordinates</span>
+      )}
+    </div>
+  )
+}
+
 function Bridge({ onReady }: { onReady: (m: L.Map) => void }) {
   const map = useMap()
   React.useEffect(() => onReady(map), [map, onReady])
@@ -232,6 +279,7 @@ export default function ReefMap({ summaries, target, metric, heatOn, animate, ba
       />
       <StationMarkers summaries={summaries} target={target} metric={metric} selectedId={selectedId} onSelect={onSelect} />
       <Bridge onReady={onReady} />
+      <CursorCoords />
     </MapContainer>
   )
 }

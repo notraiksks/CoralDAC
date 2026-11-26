@@ -47,7 +47,7 @@ function toDetection(r: any): Detection {
 }
 
 /** a photo_summaries row -> ReefImage without colonies (counts from the summary) */
-function toImage(r: any, me: string | null): ReefImage {
+function toImage(r: any): ReefImage {
   return {
     id: r.id,
     file: r.original_name ?? (r.source === "archive" ? `${r.id}.JPG` : "Uploaded photo"),
@@ -68,7 +68,8 @@ function toImage(r: any, me: string | null): ReefImage {
     others: r.n_others ?? 0,
     provenance: {
       source: r.source === "archive" ? "archive" : "upload",
-      uploader: r.source === "archive" ? SURVEY_NAME : me && r.owner === me ? "You" : "Contributor",
+      // "You" is set for the viewer's own photos when the list is shown (V2-0480: the list does not depend on who is signed in)
+      uploader: r.source === "archive" ? SURVEY_NAME : "Contributor",
       uploadedAt: r.created_at ? String(r.created_at).slice(0, 16) : null,
       locationSource: r.location_source as LocationSource,
       models: MODEL_VERSIONS,
@@ -111,27 +112,35 @@ export function RemoteStoreProvider({ children }: { children: React.ReactNode })
   const [retry, setRetry] = React.useState(0)
 
   const load = React.useCallback(async () => {
-    // uploads and survey photos, read in pages
+    // uploads and survey photos, read in pages of 1,000, two pages at a time (V2-0480: ~1,800 photos = one round trip, not two)
     const all: ReefImage[] = []
     let error: unknown = null
-    for (let from = 0; ; from += PAGE) {
-      const page = await sb.from(SUMMARY).select("*").order("created_at", { ascending: false }).order("id").range(from, from + PAGE - 1)
-      if (page.error) {
-        error = page.error
+    const page = (from: number) =>
+      sb.from(SUMMARY).select("*").order("created_at", { ascending: false }).order("id").range(from, from + PAGE - 1)
+    for (let from = 0; ; from += 2 * PAGE) {
+      let pages = await Promise.all([page(from), page(from + PAGE)])
+      // one quiet retry after a moment (a dropped mobile connection, a busy free-tier database) before showing an error
+      if (pages.some((p) => p.error)) {
+        await new Promise((r) => setTimeout(r, 1200))
+        pages = await Promise.all([page(from), page(from + PAGE)])
+      }
+      const bad = pages.find((p) => p.error)
+      if (bad) {
+        error = bad.error
         break
       }
-      all.push(...(page.data ?? []).map((r) => toImage(r, userId)))
-      if ((page.data ?? []).length < PAGE) break
+      for (const p of pages) all.push(...(p.data ?? []).map((r) => toImage(r)))
+      if ((pages[1].data ?? []).length < PAGE) break
     }
     if (!error) setRows(all.sort(byListOrder))
     else
       toast.error("Could not load the shared photos", {
         id: "coraldac-load",
-        description: "The example photos are shown. Check your connection.",
+        description: "Check your connection.",
         action: { label: "Retry", onClick: () => setRetry((n) => n + 1) },
       })
     setReady(true)
-  }, [sb, userId])
+  }, [sb])
 
   const loadDetail = React.useCallback(
     async (id: string) => {
@@ -149,7 +158,7 @@ export function RemoteStoreProvider({ children }: { children: React.ReactNode })
       setRows((all) => {
         const rest = all.filter((r) => r.id !== id)
         if (!data) return rest
-        const next = toImage(data, userId)
+        const next = toImage(data)
         const i = all.findIndex((r) => r.id === id)
         if (i < 0) return [next, ...rest]
         const copy = [...all]
@@ -158,8 +167,34 @@ export function RemoteStoreProvider({ children }: { children: React.ReactNode })
       })
       if (detailIds.current.has(id)) void loadDetail(id)
     },
-    [sb, userId, loadDetail]
+    [sb, loadDetail]
   )
+
+  // V2-0480: signing in or out no longer reloads the whole list. Signed in: add the viewer's own photos that are not finished
+  // (only the owner may read those); signed out: drop them.
+  React.useEffect(() => {
+    let alive = true
+    if (!userId) {
+      void Promise.resolve().then(() => alive && setRows((all) => (all.some((r) => r.status !== "done") ? all.filter((r) => r.status === "done") : all)))
+    } else {
+      void sb
+        .from(SUMMARY)
+        .select("*")
+        .eq("owner", userId)
+        .neq("status", "done")
+        .then(({ data, error }) => {
+          if (!alive || error || !data?.length) return
+          const mine = data.map((r) => toImage(r))
+          setRows((all) => {
+            const ids = new Set(mine.map((m) => m.id))
+            return [...mine, ...all.filter((r) => !ids.has(r.id))].sort(byListOrder)
+          })
+        })
+    }
+    return () => {
+      alive = false
+    }
+  }, [sb, userId])
 
   // who is signed in
   React.useEffect(() => {
@@ -204,17 +239,25 @@ export function RemoteStoreProvider({ children }: { children: React.ReactNode })
     }
   }, [sb, load, refreshPhoto, retry])
 
-  const done = React.useMemo(() => rows.filter((r) => r.status === "done"), [rows])
+  // the viewer's own uploads are labelled "You" (cheap: only those rows are copied)
+  const shown = React.useMemo(
+    () =>
+      userId
+        ? rows.map((r) => (r.owner === userId && r.provenance.source === "upload" ? { ...r, provenance: { ...r.provenance, uploader: "You" } } : r))
+        : rows,
+    [rows, userId]
+  )
+  const done = React.useMemo(() => shown.filter((r) => r.status === "done"), [shown])
   // finished uploads and the survey photos, all from the database (V2-0396: the bundled example photos are no longer shipped here)
   const images = done
-  const myUploads = React.useMemo(() => (userId ? rows.filter((r) => r.owner === userId) : []), [rows, userId])
+  const myUploads = React.useMemo(() => (userId ? shown.filter((r) => r.owner === userId) : []), [shown, userId])
   const getImage = React.useCallback(
     (id: string) => {
-      const row = rows.find((i) => i.id === id)
+      const row = shown.find((i) => i.id === id)
       if (!row) return undefined
       return details[id] ? { ...row, detections: details[id] } : row
     },
-    [rows, details]
+    [shown, details]
   )
   const ensureDetail = React.useCallback(
     (id: string) => {
@@ -310,6 +353,7 @@ export function RemoteStoreProvider({ children }: { children: React.ReactNode })
   const uploadPhotos = React.useCallback(
     async (items: { file: File; meta: UploadMeta }[], onProgress?: (done: number) => void) => {
       const errors: string[] = []
+      const ids: string[] = []
       let sent = 0
       for (const [n, { file, meta }] of items.entries()) {
         try {
@@ -327,15 +371,17 @@ export function RemoteStoreProvider({ children }: { children: React.ReactNode })
           const j2 = await r2.json()
           if (!r2.ok) throw new Error(j2.error ?? `submit failed (${r2.status})`)
           sent++
+          ids.push(j1.id)
         } catch (e) {
           errors.push(`${file.name}: ${e instanceof Error ? e.message : "failed"}`)
         }
         onProgress?.(n + 1)
       }
-      await load()
-      return { sent, errors }
+      // only the new photos are read back (V2-0480: was the whole list); live updates follow their analysis
+      await Promise.all(ids.map((id) => refreshPhoto(id)))
+      return { sent, errors, ids }
     },
-    [load]
+    [refreshPhoto]
   )
 
   // Username "demo" is the login

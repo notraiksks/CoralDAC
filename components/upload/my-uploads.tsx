@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -11,7 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ClassBar } from "@/components/class-ui"
 import { formatDate } from "@/components/image/image-detail"
 import { PageHeader } from "@/components/page-header"
-import { DeletePhotoButton } from "@/components/upload/delete-photo"
+import { Checkbox } from "@/components/ui/checkbox"
+import { DeleteManyButton, DeletePhotoButton } from "@/components/upload/delete-photo"
 import { stationById } from "@/lib/stations"
 import { imageCounts, totalOf } from "@/lib/classes"
 import { useStore } from "@/lib/store"
@@ -27,7 +29,7 @@ const STATUS_TEXT: Record<Exclude<PhotoStatus, "done">, string> = {
   failed: "Analysis failed",
 }
 
-function StatusBadge({ status, error }: { status: Exclude<PhotoStatus, "done">; error?: string | null }) {
+export function StatusBadge({ status, error }: { status: Exclude<PhotoStatus, "done">; error?: string | null }) {
   if (status === "failed")
     return (
       <Badge variant="destructive" title={error ?? undefined}>
@@ -44,6 +46,17 @@ function StatusBadge({ status, error }: { status: Exclude<PhotoStatus, "done">; 
 export function MyUploads() {
   const { myUploads: mine, user } = useStore()
   const router = useRouter()
+  // V2-0479: several photos can be ticked and deleted together; ids of photos that are gone drop out by themselves
+  const [picked, setPicked] = React.useState<Set<string>>(new Set())
+  const selected = mine.filter((p) => picked.has(p.id))
+  const allPicked = mine.length > 0 && selected.length === mine.length
+  const toggle = (id: string, on: boolean) =>
+    setPicked((s) => {
+      const n = new Set(s)
+      if (on) n.add(id)
+      else n.delete(id)
+      return n
+    })
 
   if (!user)
     return (
@@ -82,10 +95,30 @@ export function MyUploads() {
           <EmptyContent>{action}</EmptyContent>
         </Empty>
       ) : (
+        <div className="space-y-2">
+        {selected.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card px-3 py-2 text-sm">
+            <span className="tabular font-medium">{selected.length} selected</span>
+            <Button variant="ghost" size="sm" onClick={() => setPicked(new Set())}>
+              Clear
+            </Button>
+            <div className="ml-auto">
+              <DeleteManyButton photos={selected} onDone={(failed) => setPicked(new Set(failed))} />
+            </div>
+          </div>
+        )}
         <div className="overflow-hidden rounded-xl border bg-card">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <Checkbox
+                    aria-label={allPicked ? "Unselect all photos" : "Select all photos"}
+                    checked={allPicked}
+                    indeterminate={selected.length > 0 && !allPicked}
+                    onCheckedChange={(on) => setPicked(on && !allPicked ? new Set(mine.map((p) => p.id)) : new Set())}
+                  />
+                </TableHead>
                 <TableHead className="w-16">Photo</TableHead>
                 <TableHead>File</TableHead>
                 <TableHead className="hidden md:table-cell">Station</TableHead>
@@ -100,7 +133,15 @@ export function MyUploads() {
               {mine.map((img) => {
                 const c = imageCounts(img)
                 return (
-                  <TableRow key={img.id} className="cursor-pointer" onClick={() => router.push(`/images/${img.id}`)}>
+                  <TableRow
+                    key={img.id}
+                    className="cursor-pointer"
+                    data-state={picked.has(img.id) ? "selected" : undefined}
+                    onClick={() => router.push(`/images/${img.id}`)}
+                  >
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Checkbox aria-label={`Select ${img.file}`} checked={picked.has(img.id)} onCheckedChange={(on) => toggle(img.id, on)} />
+                    </TableCell>
                     <TableCell>
                       <span className="relative block size-11 overflow-hidden rounded-md bg-muted">
                         <Image src={img.thumb} alt="" fill sizes="44px" className="object-cover" unoptimized />
@@ -138,6 +179,7 @@ export function MyUploads() {
               })}
             </TableBody>
           </Table>
+        </div>
         </div>
       )}
     </div>
